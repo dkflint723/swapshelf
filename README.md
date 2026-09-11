@@ -89,6 +89,29 @@ has the full list.
 - **Every setting says what it does**, contrast is measured against the surface it lands on rather
   than eyeballed, and menus stay inside the window.
 
+### It checks before it writes, and keeps what it cannot replace
+
+Since 3.0.6.0. Most of it only shows when something has already gone wrong, which is when it has to
+work.
+
+- **A swap that cannot work is refused, with the reason.** The game is still running, the dll was
+  built for a different processor than the one it would replace, or it is not signed by the company
+  that makes it — NVIDIA, AMD or Intel. Any valid signature used to be enough.
+- **Two copies of what each game shipped with.** One beside the dll, as before, and one in
+  Swapshelf's own folder, where a game's verify or repair cannot delete it. That costs disk — 20 to
+  170 MB for each saved dll — and a copy is never made that would leave less than 1 GB free.
+- **Restore puts back the original, and only the original.** It checks the saved copy still matches
+  what was recorded when it was saved, and it asks before writing over a dll that changed after it
+  was swapped, whether by a game update, a mod or a fix by hand.
+- **A swap cut off part way is put back.** Each swap is written down before the game folder is
+  touched, so the next launch can undo one interrupted by the app closing, a crash or a power cut.
+- **Each version says how much is known about it** in the game you are about to put it in: Known
+  good, Likely fine, Experimental or No evidence yet, with the reason, as a shape and words.
+- **The anti-cheat note is asked per game.** It names the anti-cheat it found, and Cancel is the
+  default.
+- **Diagnostics are safe to paste into a public issue.** Folder paths become placeholders; versions
+  and hashes stay as they are.
+
 ## What game libraries are supported?
 
 - [Steam](https://store.steampowered.com/)
@@ -127,6 +150,10 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 — an installer and a portable zip. They carry no certificate, so SmartScreen will warn on first run
 and you will have to click through it. That is the cost of a fork without code signing, and it is a
 good reason to prefer the original unless you specifically want this interface.
+
+Each release lists the SHA-256 of both files — the same digests GitHub shows beside them — so a
+download can be checked by hand, and the in-app updater checks them before it runs anything it
+downloaded.
 
 Or build it yourself with the .NET 10 SDK:
 
