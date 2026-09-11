@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using DLSS_Swapper.Pe;
+using System.Security.Cryptography.X509Certificates;
+using DLSS_Swapper.Data;
+using DLSS_Swapper.Signing;
 
 
 
@@ -235,6 +238,70 @@ internal static class WinTrust
         }
     }
 
+
+    /// <summary>
+    /// Whether a dll is validly signed AND signed by the vendor that makes that kind of dll.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="VerifyEmbeddedSignature"/> answers "does this chain to a trusted root", which is a
+    /// statement about the certificate, not about the file. A dll named nvngx_dlss.dll and validly
+    /// signed by any company at all passed it. This asks the second question: who.
+    /// </para>
+    /// <para>
+    /// A file that fails the first check is described rather than just refused - never signed,
+    /// signature removed, or present but invalid - so the message can say which. The plain bool
+    /// stays for the one caller that checks driver binaries rather than dlls with a vendor.
+    /// </para>
+    /// </remarks>
+    internal static SignatureCheck VerifyForVendor(string fileName, DllVendor vendor)
+    {
+        if (VerifyEmbeddedSignature(fileName) == false)
+        {
+            var table = PeSignatureTable.Inspect(fileName);
+            var verdict = table switch
+            {
+                PeSignatureTableState.Truncated => SignatureVerdict.SignatureRemoved,
+                PeSignatureTableState.Present => SignatureVerdict.Invalid,
+                _ => SignatureVerdict.Unsigned,
+            };
+            return new SignatureCheck(verdict, null);
+        }
+
+        var publisher = GetSignerSimpleName(fileName);
+        if (PublisherAllowList.IsAcceptedPublisher(vendor, publisher))
+        {
+            return new SignatureCheck(SignatureVerdict.SignedByVendor, publisher);
+        }
+
+        Logger.Warning($"The file \"{fileName}\" is validly signed by \"{publisher}\", which is not a publisher of {vendor} dlls (expected \"{PublisherAllowList.ExpectedPublisher(vendor)}\").");
+        return new SignatureCheck(SignatureVerdict.SignedByOtherPublisher, publisher);
+    }
+
+    /// <summary>The certificate's simple subject name, e.g. "NVIDIA Corporation", or null if it cannot be read.</summary>
+    static string? GetSignerSimpleName(string fileName)
+    {
+        try
+        {
+            // SYSLIB0057 marks CreateFromSignedFile obsolete in favour of X509CertificateLoader, which
+            // has no method for reading the signer of an Authenticode-signed file - the obsoletion is
+            // about the loading pattern, and there is no replacement for this use. It runs only after
+            // WinVerifyTrust has validated the signature, and the certificate is read for its name,
+            // never used to establish trust.
+#pragma warning disable SYSLIB0057
+            using (var certificate = X509Certificate.CreateFromSignedFile(fileName))
+#pragma warning restore SYSLIB0057
+            using (var certificate2 = new X509Certificate2(certificate))
+            {
+                return certificate2.GetNameInfo(X509NameType.SimpleName, false);
+            }
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err, $"Could not read the signer of \"{fileName}\".");
+            return null;
+        }
+    }
 
     public static bool VerifyEmbeddedSignature(string fileName)
     {

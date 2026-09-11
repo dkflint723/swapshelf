@@ -862,6 +862,10 @@
   <data name="DllManager_UnknownTypeDll" xml:space="preserve">
     <value>DLL not a known type.</value>
   </data>
+  <data name="DllManager_SignedByOtherPublisherTemplate" xml:space="preserve">
+    <value>This dll is signed by "{0}", not by {1}, so it is not the file its vendor shipped. Swapshelf will not import it. If you know what it is and want it anyway, 'Allow untrusted' in Settings overrides this.</value>
+    <comment>{0} is the certificate subject that signed the file, {1} the vendor expected for this dll type (e.g. NVIDIA Corporation).</comment>
+  </data>
   <data name="DllManager_UntrustedDll" xml:space="preserve">
     <value>DLL is not trusted by Windows.</value>
   </data>
@@ -1019,6 +1023,10 @@
   </data>
   <data name="Game_Swap_UnknownError" xml:space="preserve">
     <value>Unable to swap dll. Please check your error log for more information.</value>
+  </data>
+  <data name="Game_Swap_SignedByOtherPublisherTemplate" xml:space="preserve">
+    <value>Unable to swap: this dll is signed by "{0}", not by {1}, so it is not the file its vendor shipped. Nothing has been changed. If you know what it is and want it anyway, 'Allow untrusted' in Settings overrides this.</value>
+    <comment>{0} is the certificate subject that signed the file, {1} the vendor expected for this dll type.</comment>
   </data>
   <data name="Game_Swap_UntrustedSignature" xml:space="preserve">
     <value>Unable to swap dll as we are unable to verify the signature of the version you are trying to use.

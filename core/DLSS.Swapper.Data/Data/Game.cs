@@ -21,6 +21,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DLSS_Swapper.Signing;
 
 namespace DLSS_Swapper.Data;
 
@@ -1514,12 +1515,22 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
 
-        // Validate new DLL
+        // Validate new DLL: valid, and from the vendor that makes this kind of dll. Chaining to a
+        // trusted root only proves somebody signed it, and the check used to stop there.
         if (Settings.Instance.AllowUntrusted == false)
         {
-            var isTrusted = WinTrust.VerifyEmbeddedSignature(dllRecord.LocalRecord.ExpectedPath);
-            if (isTrusted == false)
+            var vendor = DllTypes.ForAssetType(dllRecord.AssetType)?.Vendor ?? DllVendor.Unknown;
+            var signature = WinTrust.VerifyForVendor(dllRecord.LocalRecord.ExpectedPath, vendor);
+            if (signature.IsTrustedForVendor == false)
             {
+                if (signature.Verdict == SignatureVerdict.SignedByOtherPublisher)
+                {
+                    return (false, ResourceHelper.GetFormattedResourceTemplate(
+                        "Game_Swap_SignedByOtherPublisherTemplate",
+                        signature.Publisher ?? "?",
+                        PublisherAllowList.ExpectedPublisher(vendor)), false);
+                }
+
                 return (false, ResourceHelper.GetString("Game_Swap_UntrustedSignature"), false);
             }
         }

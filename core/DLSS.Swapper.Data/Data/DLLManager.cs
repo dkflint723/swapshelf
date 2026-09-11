@@ -14,6 +14,7 @@ using DLSS_Swapper.Extensions;
 using DLSS_Swapper.Helpers;
 using DLSS_Swapper.Versioning;
 using DLSS_Swapper.Pe;
+using DLSS_Swapper.Signing;
 
 namespace DLSS_Swapper.Data;
 
@@ -1140,19 +1141,30 @@ internal class DLLManager
         }
 
         var versionInfo = FileVersionInfo.GetVersionInfo(filePath);
-        var isTrusted = WinTrust.VerifyEmbeddedSignature(filePath);
+
+        // Valid, and from the vendor that makes this kind of dll. A signature that chains to a
+        // trusted root only proves that somebody signed the file; the check used to stop there, so a
+        // dll validly signed by anyone at all imported as trusted.
+        var vendor = DllTypes.ForAssetType(gameAssetType.Value)?.Vendor ?? DllVendor.Unknown;
+        var signature = WinTrust.VerifyForVendor(filePath, vendor);
+        var isTrusted = signature.IsTrustedForVendor;
 
         // Don't do anything with untrusted dlls.
         if (Settings.Instance.AllowUntrusted == false && isTrusted == false)
         {
-            // "Not trusted by Windows" covers two very different files: one that was never signed,
-            // and one whose signature was stripped after the publisher signed it. The second is
-            // someone's modification, and telling the user only that Windows declined leaves them
-            // trying to import it again or verifying the game's files for a download problem that
-            // does not exist. The header says which it is.
-            var message = PeSignatureTable.Inspect(filePath) == PeSignatureTableState.Truncated
-                ? ResourceHelper.GetString("DllManager_SignatureRemovedDll")
-                : ResourceHelper.GetString("DllManager_UntrustedDll");
+            // Each shape of refusal gets its own sentence. "Not trusted by Windows" used to cover a
+            // file that was never signed, one whose signature was stripped after signing, and one
+            // signed by the wrong company - three different problems wanting three different
+            // reactions.
+            var message = signature.Verdict switch
+            {
+                SignatureVerdict.SignatureRemoved => ResourceHelper.GetString("DllManager_SignatureRemovedDll"),
+                SignatureVerdict.SignedByOtherPublisher => ResourceHelper.GetFormattedResourceTemplate(
+                    "DllManager_SignedByOtherPublisherTemplate",
+                    signature.Publisher ?? "?",
+                    PublisherAllowList.ExpectedPublisher(vendor)),
+                _ => ResourceHelper.GetString("DllManager_UntrustedDll"),
+            };
 
             return DLLImportResult.FromFail(zippedDllFullName ?? filePath, message);
         }
