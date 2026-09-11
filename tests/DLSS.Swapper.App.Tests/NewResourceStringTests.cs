@@ -243,6 +243,9 @@ public class NewResourceStringTests
     [InlineData("RiskAck_PlayCleanHint")]
     [InlineData("RiskAck_Continue")]
     [InlineData("Game_Swap_ArchitectureMismatch")]
+    [InlineData("Game_Reset_TargetChanged")]
+    [InlineData("GamePage_DllPicker_TargetChanged")]
+    [InlineData("GamePage_DllPicker_RestoreAnyway")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

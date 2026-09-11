@@ -185,6 +185,8 @@ internal class Database
                 "acknowledged",
                 "anti",
                 "cheat",
+                // swapped_hash: what the app last wrote to a dll's path.
+                "swapped",
 
                 // game_dll_pin and its reason / pinned_at columns.
                 "dll",

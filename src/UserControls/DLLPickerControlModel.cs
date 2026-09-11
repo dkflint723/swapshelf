@@ -234,17 +234,19 @@ public partial class DLLPickerControlModel : ObservableObject
         }
     }
 
-    void ShowTempInfoBar(string title, string message, double duration = 5.0, InfoBarSeverity severity = InfoBarSeverity.Informational, int gridIndex = 3)
+    InfoBar? ShowTempInfoBar(string title, string message, double duration = 5.0, InfoBarSeverity severity = InfoBarSeverity.Informational, int gridIndex = 3, Button? actionButton = null)
     {
+        InfoBar? infoBar = null;
         if (_dllPickerControlWeakReference.TryGetTarget(out var dllPickerControl) == true)
         {
             if (dllPickerControl.Content is Grid grid)
             {
-                var infoBar = new InfoBar();
+                infoBar = new InfoBar();
                 infoBar.Message = message;
                 infoBar.Severity = severity;
                 infoBar.IsOpen = true;
                 infoBar.IsClosable = true;
+                infoBar.ActionButton = actionButton;
 
                 // Temp workaround until InfoBar has a solid color by default.
                 // https://github.com/microsoft/microsoft-ui-xaml/issues/5741
@@ -285,6 +287,7 @@ public partial class DLLPickerControlModel : ObservableObject
             }
         }
 
+        return infoBar;
     }
 
     [RelayCommand]
@@ -324,10 +327,49 @@ public partial class DLLPickerControlModel : ObservableObject
     [RelayCommand]
     async Task ResetDllAsync()
     {
-        var didReset = await Game.ResetDllAsync(GameAssetType);
+        await ResetDllAsync(restoreChangedFiles: false);
+    }
+
+    /// <summary>
+    /// Puts the saved original back, asking first when the dll is no longer what this app put there.
+    /// </summary>
+    /// <remarks>
+    /// Asked in place with an InfoBar rather than a dialog: the picker is itself a ContentDialog and
+    /// WinUI allows one per root. The safe answer is the one that needs no click - closing the bar,
+    /// or letting it time out, restores nothing.
+    /// </remarks>
+    async Task ResetDllAsync(bool restoreChangedFiles)
+    {
+        var didReset = await Game.ResetDllAsync(GameAssetType, restoreChangedFiles);
 
         if (didReset.Success == false)
         {
+            if (didReset.NeedsConfirmation)
+            {
+                InfoBar? question = null;
+                var restoreAnyway = new Button() { Content = ResourceHelper.GetString("GamePage_DllPicker_RestoreAnyway") };
+                restoreAnyway.Click += async (_, _) =>
+                {
+                    if (question is not null)
+                    {
+                        question.IsOpen = false;
+                    }
+
+                    try
+                    {
+                        await ResetDllAsync(restoreChangedFiles: true);
+                    }
+                    catch (Exception err)
+                    {
+                        Logger.Error(err);
+                        ShowTempInfoBar(ResourceHelper.GetString("General_Error"), err.Message, severity: InfoBarSeverity.Error, gridIndex: 0);
+                    }
+                };
+
+                question = ShowTempInfoBar(ResourceHelper.GetString("General_Warning"), ResourceHelper.GetString("GamePage_DllPicker_TargetChanged"), duration: 60, severity: InfoBarSeverity.Warning, gridIndex: 0, actionButton: restoreAnyway);
+                return;
+            }
+
             ShowTempInfoBar(ResourceHelper.GetString("General_Error"), didReset.Message, severity: InfoBarSeverity.Error, gridIndex: 0);
             return;
         }

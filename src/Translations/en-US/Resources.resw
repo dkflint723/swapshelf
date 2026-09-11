@@ -977,6 +977,9 @@
   <data name="DllUpdate_SwappedTemplate" xml:space="preserve">
     <value>Updated {0} dlls across {1} games.</value>
   </data>
+  <data name="Game_Reset_TargetChanged" xml:space="preserve">
+    <value>This DLL has changed since Swapshelf last swapped it, so it was left alone. Open the game and choose Restore to replace it anyway.</value>
+  </data>
   <data name="Game_Reset_AccessDeniedAdmin" xml:space="preserve">
     <value>Unable to reset to default. Running Swapshelf as administrator may fix this.</value>
   </data>
@@ -1096,6 +1099,12 @@ If you wish to override this decision please enable 'Allow Untrusted' in setting
   </data>
   <data name="GamePage_CurrentDll" xml:space="preserve">
     <value>Current DLL</value>
+  </data>
+  <data name="GamePage_DllPicker_TargetChanged" xml:space="preserve">
+    <value>This DLL has changed since Swapshelf last swapped it. Restoring the original will erase whatever changed it.</value>
+  </data>
+  <data name="GamePage_DllPicker_RestoreAnyway" xml:space="preserve">
+    <value>Restore anyway</value>
   </data>
   <data name="GamePage_DllPicker_CouldNotFindFileTemplate" xml:space="preserve">
     <value>Could not find file "{0}".</value>

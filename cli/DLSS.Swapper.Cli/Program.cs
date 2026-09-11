@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -125,7 +125,7 @@ static class Program
             "versions [--type <type>]",
             "scan [--force]",
             "swap --game <id> --type <dlss|dlss_g|dlss_d|dlss_nr|xess|xell|...> --version <version> [--force]",
-            "restore --game <id> [--type <type>]",
+            "restore --game <id> [--type <type>] [--force]",
             "version",
         };
     }
@@ -487,6 +487,7 @@ static class Program
             dll = DLLManager.Instance.GetAssetTypeName(assetType.Value),
             version = record.DisplayVersion,
             message = result.Message,
+            failure = result.Failure == SwapFailure.None ? null : result.Failure.ToString(),
             needsAdmin = result.PromptToRelaunchAsAdmin,
         }, result.Success ? 0 : 1);
     }
@@ -523,19 +524,31 @@ static class Program
             return Fail("There are no saved originals to restore in " + game.Title + ".");
         }
 
+        // Without --force a dll that has changed since the app last swapped it is left alone and
+        // reported, the way the app asks before restoring over one. A script cannot be asked, so
+        // the flag is how it answers in advance.
+        var force = HasFlag(args, "--force");
+
         var restored = new List<object>();
         var allSucceeded = true;
 
         foreach (var assetType in assetTypes)
         {
-            var result = await game.ResetDllAsync(assetType);
+            var result = await game.ResetDllAsync(assetType, restoreChangedFiles: force);
             allSucceeded = allSucceeded && result.Success;
+
+            var message = result.Message;
+            if (result.NeedsConfirmation)
+            {
+                message += " Pass --force to restore it anyway.";
+            }
 
             restored.Add(new
             {
                 dll = DLLManager.Instance.GetAssetTypeName(assetType),
                 ok = result.Success,
-                message = result.Message,
+                message = message,
+                failure = result.Failure == SwapFailure.None ? null : result.Failure.ToString(),
                 needsAdmin = result.PromptToRelaunchAsAdmin,
             });
         }

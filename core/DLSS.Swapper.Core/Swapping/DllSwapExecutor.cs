@@ -196,6 +196,26 @@ public sealed class DllSwapExecutor
             }
         }
 
+        // And that the dll being replaced is still the one this app left there. A restore is the
+        // button people press when something has already gone sideways, and "put the original back"
+        // is not the same request as "erase whatever somebody did to this file since". The caller
+        // decides what to ask; this only refuses to guess.
+        foreach (var target in distinct)
+        {
+            if (string.IsNullOrWhiteSpace(target.ExpectedCurrentHash) || _fileSystem.FileExists(target.TargetPath) == false)
+            {
+                continue;
+            }
+
+            using (var stream = _fileSystem.OpenRead(target.TargetPath))
+            {
+                if (FileHashes.Md5Matches(stream, target.ExpectedCurrentHash) == false)
+                {
+                    return SwapResult.Fail(SwapFailure.TargetChanged, target.TargetPath);
+                }
+            }
+        }
+
         var transaction = new Transaction(_fileSystem);
 
         try

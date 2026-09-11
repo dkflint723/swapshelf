@@ -629,6 +629,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                     if (oldGameAsset is not null) // DLL existed previously
                     {
+                        // What this app last wrote here follows the row, not the file. The scan
+                        // rebuilds rows from disk, so without this a restart forgot every swap.
+                        gameAsset.SwappedHash = oldGameAsset.SwappedHash;
+
                         if (gameAsset.Version == oldGameAsset.Version)
                         {
                             // NOOP
@@ -1349,13 +1353,18 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     /// </remarks>
     internal static Func<string, bool> IsRunningCheck { get; set; } = PlayCleanSession.AnyProcessUnder;
 
-    internal async Task<(bool Success, string Message, bool PromptToRelaunchAsAdmin)> ResetDllAsync(GameAssetType gameAssetType)
+    /// <param name="restoreChangedFiles">
+    /// True when the user has been told the dll changed since it was swapped and has said to restore
+    /// over it anyway. False asks: a dll that no longer hashes to what this app last wrote there is
+    /// left alone and the result says so.
+    /// </param>
+    internal async Task<DllOperationResult> ResetDllAsync(GameAssetType gameAssetType, bool restoreChangedFiles = false)
     {
         // Restoring the original is the safe direction, but it is still a change to a game the user
         // asked to be left alone. Blocking both means the setting has one meaning rather than two.
         if (SkipUpdates)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_UpdatesTurnedOff"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_UpdatesTurnedOff"), false);
         }
 
         var backupRecordType = DLLManager.Instance.GetAssetBackupType(gameAssetType);
@@ -1364,7 +1373,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         if (existingBackupRecords.Count == 0)
         {
             Logger.Info("No backup records found.");
-            return (false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
         }
 
         // Pair every backup with the dll it restores before touching anything, so a game missing one
@@ -1378,7 +1387,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             if (existingRecords.Count != 1)
             {
                 Logger.Info("Backup record was found, existing records were not.");
-                return (false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
             }
 
             restorePairs.Add((existingBackupRecord, existingRecords[0]));
@@ -1396,14 +1405,21 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // way a swap does. Asked first so the answer is "close the game", not a failed restore.
         if (IsRunningCheck(InstallPath))
         {
-            return (false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
         }
 
         // Each backup goes back only if it still hashes to what was recorded when it was saved. A
         // backup made before hashes were kept has none recorded and is restored without the check -
         // it is still the only original there is.
+        //
+        // And each dll is replaced only if it is still what this app last put there, unless the
+        // user has already been asked. Restoring over a file somebody changed since - a game update,
+        // a mod, a fix by hand - erases their work, and "reset to default" never promised that.
         var resetResult = new DllSwapExecutor().Reset(restorePairs
-            .Select(x => new ResetTarget(x.Current.Path, string.IsNullOrWhiteSpace(x.Backup.Hash) ? null : x.Backup.Hash))
+            .Select(x => new ResetTarget(
+                x.Current.Path,
+                string.IsNullOrWhiteSpace(x.Backup.Hash) ? null : x.Backup.Hash,
+                restoreChangedFiles ? null : ExpectedCurrentHash(x.Current)))
             .ToList());
 
         foreach (var warning in resetResult.Warnings)
@@ -1484,10 +1500,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             }
 
             var totalCount = restorePairs.Count + unrestorableRecords.Count;
-            return (true, ResourceHelper.GetFormattedResourceTemplate("Game_Reset_PartialTemplate", restorePairs.Count, totalCount, unrestorableRecords.Count), false);
+            return new DllOperationResult(true, ResourceHelper.GetFormattedResourceTemplate("Game_Reset_PartialTemplate", restorePairs.Count, totalCount, unrestorableRecords.Count), false);
         }
 
-        return (true, string.Empty, false);
+        return new DllOperationResult(true, string.Empty, false);
     }
 
     static string TrimBackupSuffix(string backupPath)
@@ -1501,54 +1517,72 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         return backupPath;
     }
 
-    (bool Success, string Message, bool PromptToRelaunchAsAdmin) DescribeSwapFailure(SwapResult result)
+    DllOperationResult DescribeSwapFailure(SwapResult result)
     {
         switch (result.Failure)
         {
             case SwapFailure.SourceMissing:
-                return (false, ResourceHelper.GetString("Game_Swap_DownloadedDllNotFound"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_DownloadedDllNotFound"), false, result.Failure);
 
             case SwapFailure.NoTargets:
-                return (false, ResourceHelper.GetString("Game_Swap_NoDllRecordsToUpdate"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_NoDllRecordsToUpdate"), false, result.Failure);
 
             case SwapFailure.AccessDenied:
                 if (Environment.IsPrivilegedProcess is false)
                 {
-                    return (false, ResourceHelper.GetString("Game_Swap_AccessDeniedAdmin"), true);
+                    return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_AccessDeniedAdmin"), true, result.Failure);
                 }
-                return (false, ResourceHelper.GetString("Game_Swap_AccessDenied"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_AccessDenied"), false, result.Failure);
 
             case SwapFailure.FileInUse:
-                return (false, ResourceHelper.GetString("Game_Swap_FileInUse"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_FileInUse"), false, result.Failure);
 
             case SwapFailure.ArchitectureMismatch:
-                return (false, ResourceHelper.GetString("Game_Swap_ArchitectureMismatch"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_ArchitectureMismatch"), false, result.Failure);
 
             default:
-                return (false, ResourceHelper.GetString("Game_Swap_UnknownError"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_UnknownError"), false, result.Failure);
         }
     }
 
-    (bool Success, string Message, bool PromptToRelaunchAsAdmin) DescribeResetFailure(SwapResult result)
+    DllOperationResult DescribeResetFailure(SwapResult result)
     {
         switch (result.Failure)
         {
             case SwapFailure.AccessDenied:
                 if (Environment.IsPrivilegedProcess is false)
                 {
-                    return (false, ResourceHelper.GetString("Game_Reset_AccessDeniedAdmin"), true);
+                    return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_AccessDeniedAdmin"), true, result.Failure);
                 }
-                return (false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_RepairManually"), false, result.Failure);
 
             case SwapFailure.FileInUse:
-                return (false, ResourceHelper.GetString("Game_Reset_FileInUse"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_FileInUse"), false, result.Failure);
 
             case SwapFailure.BackupTampered:
-                return (false, ResourceHelper.GetString("Game_Reset_BackupTampered"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_BackupTampered"), false, result.Failure);
+
+            case SwapFailure.TargetChanged:
+                // Not an error: a question. The caller sees NeedsConfirmation and asks it.
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_TargetChanged"), false, result.Failure);
 
             default:
-                return (false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Reset_RepairManually"), false, result.Failure);
         }
+    }
+
+    /// <summary>
+    /// What the dll now at a path is expected to hash to: what this app last wrote there, or failing
+    /// that what the last scan saw. Null when neither is known, which skips the check.
+    /// </summary>
+    static string? ExpectedCurrentHash(GameAsset current)
+    {
+        if (string.IsNullOrWhiteSpace(current.SwappedHash) == false)
+        {
+            return current.SwappedHash;
+        }
+
+        return string.IsNullOrWhiteSpace(current.Hash) ? null : current.Hash;
     }
 
     /// <summary>
@@ -1556,35 +1590,35 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     /// </summary>
     /// <param name="dlssRecord"></param>
     /// <returns>Tuple containing a boolean of Success, if this is false there will be an error message in the Message response.</returns>
-    internal async Task<(bool Success, string Message, bool PromptToRelaunchAsAdmin)> UpdateDllAsync(DLLRecord dllRecord)
+    internal async Task<DllOperationResult> UpdateDllAsync(DLLRecord dllRecord)
     {
         // Locked means locked, not merely left out of bulk updates. A game excluded because a
         // modified dll gets it flagged by anti cheat is no safer if the swap can still be done by
         // hand, and a promise that only covers one route is worse than no promise.
         if (SkipUpdates)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_UpdatesTurnedOff"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_UpdatesTurnedOff"), false);
         }
 
         if (dllRecord is null)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_DllRecordNotFound"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_DllRecordNotFound"), false);
         }
 
         if (dllRecord.LocalRecord is null)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_LocalDllRecordNotFound"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_LocalDllRecordNotFound"), false);
         }
 
         if (File.Exists(dllRecord.LocalRecord.ExpectedPath) == false)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_DownloadedDllNotFound"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_DownloadedDllNotFound"), false);
         }
 
         var existingRecords = this.GameAssets.Where(x => x.AssetType == dllRecord.AssetType).ToList();
         if (existingRecords.Count == 0)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_NoDllRecordsToUpdate"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_NoDllRecordsToUpdate"), false);
         }
 
         var backupRecordType = DLLManager.Instance.GetAssetBackupType(dllRecord.AssetType);
@@ -1594,7 +1628,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         var md5Hash = versionInfo.GetMD5Hash();
         if (dllRecord.MD5Hash != md5Hash)
         {
-            return (false, ResourceHelper.GetString("Game_Swap_InvalidHash"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_InvalidHash"), false);
         }
 
 
@@ -1608,13 +1642,13 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             {
                 if (signature.Verdict == SignatureVerdict.SignedByOtherPublisher)
                 {
-                    return (false, ResourceHelper.GetFormattedResourceTemplate(
+                    return new DllOperationResult(false, ResourceHelper.GetFormattedResourceTemplate(
                         "Game_Swap_SignedByOtherPublisherTemplate",
                         signature.Publisher ?? "?",
                         PublisherAllowList.ExpectedPublisher(vendor)), false);
                 }
 
-                return (false, ResourceHelper.GetString("Game_Swap_UntrustedSignature"), false);
+                return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_UntrustedSignature"), false);
             }
         }
 
@@ -1623,7 +1657,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // answer than a failed swap, and this is where there is still nothing to undo.
         if (IsRunningCheck(InstallPath))
         {
-            return (false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
+            return new DllOperationResult(false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
         }
 
         // Every location this game keeps the dll in is swapped as one operation. The executor backs up
@@ -1681,6 +1715,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Path = existingRecord.Path,
                 Version = dllVersion,
                 Hash = dllRecord.MD5Hash,
+                SwappedHash = dllRecord.MD5Hash,
             });
 
             dllHistory.Add(new GameHistory()
@@ -1720,7 +1755,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // it only refreshed when the manifest reloaded or the game was rescanned.
         RefreshUpdateAvailable();
 
-        return (true, string.Empty, false);
+        return new DllOperationResult(true, string.Empty, false);
     }
 
     void UpdateCurrentAsset(GameAsset newGameAsset, GameAssetType gameAssetType)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -138,6 +138,19 @@ public class GameAsset : IEquatable<GameAsset>
 
     [property: Column("hash")]
     public string Hash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The MD5 of the dll this app last wrote to this path, or null when it never has.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Hash"/> follows the file: a scan re-reads any dll whose size or version changed,
+    /// so after someone edits a swapped dll by hand the row's hash is the edited file's. This one
+    /// follows the swap instead. Set when a dll is swapped in, carried across scans untouched, gone
+    /// once the original is back, it lets a restore tell "still what we put there" from "changed
+    /// since" - and ask before erasing the latter.
+    /// </remarks>
+    [property: Column("swapped_hash")]
+    public string? SwappedHash { get; set; } = null;
 
     /// <summary>
     /// Size on disk, stored so a rescan can tell an unchanged file from a changed one without

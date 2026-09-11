@@ -31,6 +31,14 @@ public enum SwapFailure
     /// </summary>
     BackupTampered,
 
+    /// <summary>
+    /// A reset was requested but the dll to be replaced is no longer the one this app last wrote or
+    /// last saw there. Nothing was restored: whatever changed it since - a game update, a mod, a fix
+    /// applied by hand - would be erased without anyone having been asked. The caller asks, and
+    /// repeats the reset with the check waived if the answer is yes.
+    /// </summary>
+    TargetChanged,
+
     /// <summary>We could not write to the game directory. Usually fixed by running elevated.</summary>
     AccessDenied,
 
