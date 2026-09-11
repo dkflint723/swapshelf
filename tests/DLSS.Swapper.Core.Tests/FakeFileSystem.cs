@@ -13,13 +13,22 @@ namespace DLSS_Swapper.Tests;
 /// </summary>
 internal sealed class FakeFileSystem : IFileSystem
 {
-    readonly Dictionary<string, string> _files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    // Bytes, not text: a swap test that reads a PE header needs values above 0x7F, which a UTF-8
+    // string would encode as two bytes. Text fixtures still go in and come out as strings.
+    readonly Dictionary<string, byte[]> _files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
     readonly HashSet<string> _lockedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     readonly HashSet<string> _readOnlyDirectoryPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     public FakeFileSystem AddFile(string path, string contents)
     {
-        _files[path] = contents;
+        _files[path] = Encoding.UTF8.GetBytes(contents);
+        return this;
+    }
+
+    /// <summary>A file with exact bytes, for fixtures that are headers rather than words.</summary>
+    public FakeFileSystem AddBinaryFile(string path, byte[] contents)
+    {
+        _files[path] = (byte[])contents.Clone();
         return this;
     }
 
@@ -41,7 +50,9 @@ internal sealed class FakeFileSystem : IFileSystem
         return this;
     }
 
-    public string ReadFile(string path) => _files[path];
+    public string ReadFile(string path) => Encoding.UTF8.GetString(_files[path]);
+
+    public byte[] ReadBytes(string path) => (byte[])_files[path].Clone();
 
     public IReadOnlyCollection<string> AllPaths => _files.Keys.ToList();
 
@@ -50,7 +61,7 @@ internal sealed class FakeFileSystem : IFileSystem
     public Stream OpenRead(string path)
     {
         RequireExists(path);
-        return new MemoryStream(Encoding.UTF8.GetBytes(_files[path]), writable: false);
+        return new MemoryStream(_files[path], writable: false);
     }
 
     public void Copy(string sourcePath, string destinationPath, bool overwrite)

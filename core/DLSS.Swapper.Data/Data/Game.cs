@@ -1521,6 +1521,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             case SwapFailure.FileInUse:
                 return (false, ResourceHelper.GetString("Game_Swap_FileInUse"), false);
 
+            case SwapFailure.ArchitectureMismatch:
+                return (false, ResourceHelper.GetString("Game_Swap_ArchitectureMismatch"), false);
+
             default:
                 return (false, ResourceHelper.GetString("Game_Swap_UnknownError"), false);
         }

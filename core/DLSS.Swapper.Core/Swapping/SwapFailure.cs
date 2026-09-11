@@ -11,6 +11,13 @@ public enum SwapFailure
     /// <summary>The dll we were asked to swap in is not on disk.</summary>
     SourceMissing,
 
+    /// <summary>
+    /// The dll we were asked to swap in was built for a different processor architecture than the
+    /// one it would replace - a 32-bit file over a 64-bit one, or the reverse. The game could not
+    /// have loaded it, so nothing was written.
+    /// </summary>
+    ArchitectureMismatch,
+
     /// <summary>There was nothing to act on.</summary>
     NoTargets,
 

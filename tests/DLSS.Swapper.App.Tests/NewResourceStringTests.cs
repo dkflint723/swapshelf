@@ -242,6 +242,7 @@ public class NewResourceStringTests
     [InlineData("RiskAck_GameWithAntiCheatTemplate")]
     [InlineData("RiskAck_PlayCleanHint")]
     [InlineData("RiskAck_Continue")]
+    [InlineData("Game_Swap_ArchitectureMismatch")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

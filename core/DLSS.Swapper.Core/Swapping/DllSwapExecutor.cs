@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DLSS_Swapper.Pe;
 
 namespace DLSS_Swapper.Swapping;
 
@@ -64,6 +65,31 @@ public sealed class DllSwapExecutor
         if (_fileSystem.FileExists(sourcePath) == false)
         {
             return SwapResult.Fail(SwapFailure.SourceMissing, sourcePath);
+        }
+
+        // The dll going in has to be built for the same processor as the one it replaces. Windows
+        // refuses to load the wrong one, and the game turns that into a crash on startup - long
+        // after the swap reported success. Two bytes of header, read before anything is staged; a
+        // header that cannot be read says nothing and is not held against the file.
+        var sourceMachine = ReadMachine(sourcePath);
+        if (sourceMachine != PeMachine.Unknown)
+        {
+            foreach (var targetPath in targets)
+            {
+                if (_fileSystem.FileExists(targetPath) == false)
+                {
+                    continue;
+                }
+
+                var targetMachine = ReadMachine(targetPath);
+                if (targetMachine != PeMachine.Unknown && targetMachine != sourceMachine)
+                {
+                    return SwapResult.Fail(SwapFailure.ArchitectureMismatch, targetPath, warnings: new[]
+                    {
+                        $"{sourcePath} is {PeHeader.Describe(sourceMachine)}; {targetPath} is {PeHeader.Describe(targetMachine)}. Not swapped.",
+                    });
+                }
+            }
         }
 
         var transaction = new Transaction(_fileSystem);
@@ -237,6 +263,22 @@ public sealed class DllSwapExecutor
         // The list itself when there was nothing to remove, so the ordinary case allocates nothing
         // and callers comparing against what they passed in still see it.
         return distinct.Count == targetPaths.Count ? targetPaths : distinct;
+    }
+
+    PeMachine ReadMachine(string path)
+    {
+        try
+        {
+            using (var stream = _fileSystem.OpenRead(path))
+            {
+                return PeHeader.ReadMachine(stream);
+            }
+        }
+        catch (Exception)
+        {
+            // A file that will not open for reading is reported by the step that needs to write it.
+            return PeMachine.Unknown;
+        }
     }
 
     public static string GetBackupPath(string targetPath) => targetPath + BackupSuffix;

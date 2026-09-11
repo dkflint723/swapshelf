@@ -997,6 +997,9 @@
   <data name="Game_Reset_RepairManually" xml:space="preserve">
     <value>Unable to reset to default. Please repair your game manually.</value>
   </data>
+  <data name="Game_Swap_ArchitectureMismatch" xml:space="preserve">
+    <value>This DLL was built for a different processor architecture than the one the game uses (for example a 32-bit file where the game has a 64-bit one). The game could not load it, so it was not swapped in.</value>
+  </data>
   <data name="Game_Swap_AccessDenied" xml:space="preserve">
     <value>Unable to swap dll as we are unable to write to the target directory.</value>
   </data>
