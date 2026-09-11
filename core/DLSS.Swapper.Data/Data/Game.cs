@@ -1447,12 +1447,12 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // And each dll is replaced only if it is still what this app last put there, unless the
         // user has already been asked. Restoring over a file somebody changed since - a game update,
         // a mod, a fix by hand - erases their work, and "reset to default" never promised that.
-        var resetResult = new DllSwapExecutor().Reset(restorePairs
+        var resetResult = SwapExecutors.Create().Reset(restorePairs
             .Select(x => new ResetTarget(
                 x.Current.Path,
                 string.IsNullOrWhiteSpace(x.Backup.Hash) ? null : x.Backup.Hash,
                 restoreChangedFiles ? null : ExpectedCurrentHash(x.Current)))
-            .ToList());
+            .ToList(), new OperationLabel(ID, Title));
 
         foreach (var warning in resetResult.Warnings)
         {
@@ -1695,7 +1695,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // Every location this game keeps the dll in is swapped as one operation. The executor backs up
         // each one that needs it, stages the writes, and puts everything back if any step fails, so a
         // failure here means nothing on disk changed.
-        var swapResult = new DllSwapExecutor().Swap(dllRecord.LocalRecord.ExpectedPath, existingRecords.Select(x => x.Path).ToList());
+        var swapResult = SwapExecutors.Create().Swap(dllRecord.LocalRecord.ExpectedPath, existingRecords.Select(x => x.Path).ToList(), new OperationLabel(ID, Title));
 
         foreach (var warning in swapResult.Warnings)
         {

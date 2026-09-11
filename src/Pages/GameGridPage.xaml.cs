@@ -345,6 +345,11 @@ public sealed partial class GameGridPage : Page
         ViewModel.DismissUndoneSwaps();
     }
 
+    private void InterruptedSwapsInfoBar_CloseButtonClick(InfoBar sender, object args)
+    {
+        ViewModel.DismissInterruptedSwaps();
+    }
+
     /// <summary>
     /// Empties the search box, which is what actually re-runs the search.
     /// </summary>

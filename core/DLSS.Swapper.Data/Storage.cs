@@ -156,6 +156,12 @@ static class Storage
         return Path.Combine(StoragePath, "originals");
     }
 
+    /// <summary>Where a swap or reset is recorded while it runs, so an interrupted one can be put back.</summary>
+    public static string GetOperationsFolder()
+    {
+        return Path.Combine(StoragePath, "operations");
+    }
+
     public static string GetUpdatesFolder()
     {
         return Path.Combine(GetTemp(), "updates");

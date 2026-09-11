@@ -56,6 +56,19 @@ public partial class GameGridPageModel : ObservableObject
 
     public string UndoneSwapsMessage => UndoneSwapsNotice?.Message ?? string.Empty;
 
+    /// <summary>What the page says about swaps the previous session did not finish, or null for nothing.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InterruptedSwapsIsOpen))]
+    [NotifyPropertyChangedFor(nameof(InterruptedSwapsTitle))]
+    [NotifyPropertyChangedFor(nameof(InterruptedSwapsMessage))]
+    public partial InterruptedSwapNotice? InterruptedSwapsNotice { get; set; }
+
+    public bool InterruptedSwapsIsOpen => InterruptedSwapsNotice is not null;
+
+    public string InterruptedSwapsTitle => InterruptedSwapsNotice?.Title ?? string.Empty;
+
+    public string InterruptedSwapsMessage => InterruptedSwapsNotice?.Message ?? string.Empty;
+
     [ObservableProperty]
     public partial ICollectionView? CurrentCollectionView { get; set; } = null;
 
@@ -528,6 +541,22 @@ public partial class GameGridPageModel : ObservableObject
 
         try
         {
+            // Before anything reads the game folders. A swap the previous session did not finish is
+            // put back first, so the scan sees each game as it was and the notice can say so.
+            try
+            {
+                var interrupted = await Task.Run(SwapExecutors.RecoverInterrupted);
+                if (interrupted is not null)
+                {
+                    InterruptedSwapsNotice = interrupted;
+                }
+            }
+            catch (Exception err)
+            {
+                // The games still load; only the check failed, and it says so in the log.
+                Logger.Error(err, "Could not check for interrupted swaps.");
+            }
+
             try
             {
                 await GameManager.Instance.LoadGamesFromCacheAsync();
@@ -597,6 +626,12 @@ public partial class GameGridPageModel : ObservableObject
             Settings.Instance.UndoneSwapsDismissedAt = UndoneSwapsNotice.NewestChangedAt;
             UndoneSwapsNotice = null;
         }
+    }
+
+    /// <summary>Closes the notice. Nothing to remember: the journal entries it described are gone.</summary>
+    public void DismissInterruptedSwaps()
+    {
+        InterruptedSwapsNotice = null;
     }
 
     public void SearchForGameEvent(object sender, TextChangedEventArgs e)

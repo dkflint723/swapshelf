@@ -39,10 +39,22 @@ public sealed class DllSwapExecutor
     internal const string PreviousSuffix = ".dlss-swapper-previous";
 
     readonly IFileSystem _fileSystem;
+    readonly IOperationJournal _journal;
 
-    public DllSwapExecutor(IFileSystem fileSystem)
+    /// <param name="journal">
+    /// Where each operation is recorded while it runs, so one the process does not live to finish
+    /// can be put back next launch by <see cref="SwapRecovery"/>. The journal is a safety net over
+    /// the operation, never a gate on it: one that cannot be written is reported as a warning and
+    /// the swap goes ahead.
+    /// </param>
+    public DllSwapExecutor(IFileSystem fileSystem, IOperationJournal journal)
     {
         _fileSystem = fileSystem;
+        _journal = journal;
+    }
+
+    public DllSwapExecutor(IFileSystem fileSystem) : this(fileSystem, NullOperationJournal.Instance)
+    {
     }
 
     public DllSwapExecutor() : this(PhysicalFileSystem.Instance)
@@ -53,7 +65,7 @@ public sealed class DllSwapExecutor
     /// Points every target at the dll in <paramref name="sourcePath"/>, backing up any target that
     /// does not already have a backup.
     /// </summary>
-    public SwapResult Swap(string sourcePath, IReadOnlyList<string> targetPaths)
+    public SwapResult Swap(string sourcePath, IReadOnlyList<string> targetPaths, OperationLabel? label = null)
     {
         var targets = WithoutDuplicates(targetPaths);
 
@@ -93,6 +105,7 @@ public sealed class DllSwapExecutor
         }
 
         var transaction = new Transaction(_fileSystem);
+        var journal = JournalEntry.Open(_journal, OperationKind.Swap, label, sourcePath, targets);
 
         try
         {
@@ -108,17 +121,25 @@ public sealed class DllSwapExecutor
                 transaction.Stage(targetPath, sourcePath);
             }
 
+            // From here the game folder changes. The journal says so and lists the backups this
+            // swap made, so a session that ends between two renames can be put back next launch.
+            journal.Committing(transaction.CreatedBackupPaths);
+
             foreach (var targetPath in targets)
             {
                 transaction.Commit(targetPath);
             }
+
+            // Every rename is done: the game has its new dll at every location. Closed before the
+            // cleanup, so a crash while deleting temp files leaves orphans rather than a rollback.
+            journal.Done();
         }
         catch (Exception err)
         {
-            return transaction.RollbackAndFail(err);
+            return journal.Finish(transaction.RollbackAndFail(err));
         }
 
-        return transaction.Complete();
+        return journal.Finish(transaction.Complete());
     }
 
     /// <summary>
@@ -148,7 +169,7 @@ public sealed class DllSwapExecutor
     /// build carry none, and they are still the only original there is.
     /// </para>
     /// </remarks>
-    public SwapResult Reset(IReadOnlyList<ResetTarget> targets)
+    public SwapResult Reset(IReadOnlyList<ResetTarget> targets, OperationLabel? label = null)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var distinct = new List<ResetTarget>();
@@ -217,6 +238,12 @@ public sealed class DllSwapExecutor
         }
 
         var transaction = new Transaction(_fileSystem);
+        var targetPaths = new List<string>(distinct.Count);
+        foreach (var target in distinct)
+        {
+            targetPaths.Add(target.TargetPath);
+        }
+        var journal = JournalEntry.Open(_journal, OperationKind.Reset, label, null, targetPaths);
 
         try
         {
@@ -225,14 +252,20 @@ public sealed class DllSwapExecutor
                 transaction.Stage(target.TargetPath, GetBackupPath(target.TargetPath));
             }
 
+            journal.Committing(transaction.CreatedBackupPaths);
+
             foreach (var target in distinct)
             {
                 transaction.Commit(target.TargetPath);
             }
+
+            // The originals are back at every location. Closed before the backups are discarded: a
+            // crash during that cleanup must not be answered by rolling the restore back.
+            journal.Done();
         }
         catch (Exception err)
         {
-            return transaction.RollbackAndFail(err);
+            return journal.Finish(transaction.RollbackAndFail(err));
         }
 
         // A backup only exists to get back to the original dll. Once we are there it has done its job.
@@ -241,7 +274,7 @@ public sealed class DllSwapExecutor
             transaction.Discard(GetBackupPath(target.TargetPath));
         }
 
-        return transaction.Complete();
+        return journal.Finish(transaction.Complete());
     }
 
     /// <summary>
@@ -322,6 +355,94 @@ public sealed class DllSwapExecutor
     }
 
     /// <summary>
+    /// The journal's view of one operation: opened before the folder is touched, marked when the
+    /// renames begin, removed when they are all done. Never throws into the operation.
+    /// </summary>
+    sealed class JournalEntry
+    {
+        readonly IOperationJournal _journal;
+        readonly OperationRecord _record;
+        readonly List<string> _warnings = new List<string>();
+        bool _enabled;
+        bool _done;
+
+        JournalEntry(IOperationJournal journal, OperationRecord record)
+        {
+            _journal = journal;
+            _record = record;
+        }
+
+        public static JournalEntry Open(IOperationJournal journal, OperationKind kind, OperationLabel? label, string? sourcePath, IReadOnlyList<string> targetPaths)
+        {
+            var entry = new JournalEntry(journal, new OperationRecord()
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = kind,
+                State = OperationState.Staging,
+                GameId = label?.GameId,
+                GameTitle = label?.GameTitle,
+                SourcePath = sourcePath,
+                TargetPaths = targetPaths.ToList(),
+                StartedAtUtc = DateTime.UtcNow,
+            });
+
+            entry._enabled = entry.TryWrite("Could not open the operation journal");
+            return entry;
+        }
+
+        public void Committing(IReadOnlyList<string> createdBackupPaths)
+        {
+            if (_enabled == false)
+            {
+                return;
+            }
+
+            _record.State = OperationState.Committing;
+            _record.CreatedBackupPaths = createdBackupPaths.ToList();
+            TryWrite("Could not update the operation journal");
+        }
+
+        public void Done()
+        {
+            if (_enabled == false || _done)
+            {
+                return;
+            }
+
+            _done = true;
+            try
+            {
+                _journal.Remove(_record.Id);
+            }
+            catch (Exception err)
+            {
+                // Left behind, recovery next launch finds nothing to put back and removes it.
+                _warnings.Add($"Could not close the operation journal entry: {err.Message}");
+            }
+        }
+
+        public SwapResult Finish(SwapResult result)
+        {
+            Done();
+            return result.WithWarnings(_warnings);
+        }
+
+        bool TryWrite(string what)
+        {
+            try
+            {
+                _journal.Write(_record);
+                return true;
+            }
+            catch (Exception err)
+            {
+                _warnings.Add($"{what}; the operation ran without one: {err.Message}");
+                return false;
+            }
+        }
+    }
+
+    /// <summary>
     /// Tracks what has been done so far so it can all be undone.
     /// </summary>
     sealed class Transaction
@@ -342,6 +463,9 @@ public sealed class DllSwapExecutor
         {
             _fileSystem = fileSystem;
         }
+
+        /// <summary>Backups this operation has made so far, for the journal.</summary>
+        public IReadOnlyList<string> CreatedBackupPaths => _createdBackups.Select(x => x.BackupPath).ToList();
 
         public void EnsureBackup(string targetPath)
         {

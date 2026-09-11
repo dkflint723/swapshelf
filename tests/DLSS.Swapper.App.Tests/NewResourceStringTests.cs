@@ -263,6 +263,12 @@ public class NewResourceStringTests
     [InlineData("Confidence_Reason_DifferentLine")]
     [InlineData("Confidence_Reason_UnknownFamily")]
     [InlineData("GamePage_Row_Streamline")]
+    [InlineData("InterruptedSwaps_TitleOne")]
+    [InlineData("InterruptedSwaps_TitleTemplate")]
+    [InlineData("InterruptedSwaps_Body")]
+    [InlineData("InterruptedSwaps_LinePutBackTemplate")]
+    [InlineData("InterruptedSwaps_LineIncompleteTemplate")]
+    [InlineData("InterruptedSwaps_UnknownGame")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

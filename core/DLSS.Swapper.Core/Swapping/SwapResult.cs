@@ -59,6 +59,30 @@ public sealed class SwapResult
         };
     }
 
+    /// <summary>This result with more warnings on it. The same object when there are none to add.</summary>
+    internal SwapResult WithWarnings(IReadOnlyList<string> extra)
+    {
+        if (extra.Count == 0)
+        {
+            return this;
+        }
+
+        var merged = new List<string>(Warnings);
+        merged.AddRange(extra);
+
+        return new SwapResult()
+        {
+            Success = Success,
+            Failure = Failure,
+            FailedPath = FailedPath,
+            Error = Error,
+            CreatedBackups = CreatedBackups,
+            ReplacedPaths = ReplacedPaths,
+            RollbackIncomplete = RollbackIncomplete,
+            Warnings = merged,
+        };
+    }
+
     internal static SwapResult Fail(SwapFailure failure, string? failedPath = null, Exception? error = null, bool rollbackIncomplete = false, IReadOnlyList<string>? warnings = null)
     {
         return new SwapResult()

@@ -1062,6 +1062,24 @@ If you wish to override this decision please enable 'Allow Untrusted' in setting
   <data name="GameHistoryEventType_DLLChangedExternally" xml:space="preserve">
     <value>DLL was changed externally</value>
   </data>
+  <data name="InterruptedSwaps_TitleOne" xml:space="preserve">
+    <value>An interrupted swap was put back</value>
+  </data>
+  <data name="InterruptedSwaps_TitleTemplate" xml:space="preserve">
+    <value>{0} interrupted swaps were put back</value>
+  </data>
+  <data name="InterruptedSwaps_Body" xml:space="preserve">
+    <value>The previous session ended while this app was writing to a game. Each game below was returned to how it was before that swap began. Swap again if you still want it.</value>
+  </data>
+  <data name="InterruptedSwaps_LinePutBackTemplate" xml:space="preserve">
+    <value>{0} — put back</value>
+  </data>
+  <data name="InterruptedSwaps_LineIncompleteTemplate" xml:space="preserve">
+    <value>{0} — could not be fully put back, see the log</value>
+  </data>
+  <data name="InterruptedSwaps_UnknownGame" xml:space="preserve">
+    <value>A game that is no longer in the library</value>
+  </data>
   <data name="UndoneSwaps_TitleOne" xml:space="preserve">
     <value>A swap was undone outside this app</value>
   </data>
