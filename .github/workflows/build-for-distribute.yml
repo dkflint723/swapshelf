@@ -5,17 +5,19 @@ on:
     tags:
       - v1.*
       - v2.*
+      - v3.*
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-2025
     env:
-      # Sign when there is something to sign with. The signing steps submit to a SignPath
-      # organization that belongs to the original project, and this fork holds no token for it, so
-      # on a tag here this resolves to false and the build takes the unsigned path that already
-      # existed for untagged builds. Upstream, where the secret is set, behaves exactly as before.
-      SHOULD_SIGN: ${{ startsWith(github.ref, 'refs/tags/') && secrets.SIGNPATH_API_TOKEN != '' }}
+      # Sign when there is something to sign with: a tag, a SignPath token, and the organization
+      # and project the token belongs to. The organization and project used to be written in here
+      # and were upstream's; as repository variables, a token set on this fork can only ever submit
+      # to a project of its own. With any of the three missing the build takes the unsigned path
+      # that has always existed for untagged builds. See package/SIGNING.md.
+      SHOULD_SIGN: ${{ startsWith(github.ref, 'refs/tags/') && secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' }}
 
     steps:
 
@@ -151,8 +153,8 @@ jobs:
       uses: signpath/github-action-submit-signing-request@v1.2
       with:
         api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-        organization-id: '9b913506-76ef-4356-b93a-0fe60061013c'
-        project-slug: 'dlss-swapper'
+        organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+        project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG }}'
         signing-policy-slug: 'release-signing'
         artifact-configuration-slug: 'installer-and-portable-raw-files'
         github-artifact-id: '${{ steps.upload-unsigned-artifacts.outputs.artifact-id }}'
@@ -218,8 +220,8 @@ jobs:
       uses: signpath/github-action-submit-signing-request@v1.2
       with:
         api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-        organization-id: '9b913506-76ef-4356-b93a-0fe60061013c'
-        project-slug: 'dlss-swapper'
+        organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+        project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG }}'
         signing-policy-slug: 'release-signing'
         artifact-configuration-slug: 'installer'
         github-artifact-id: '${{ steps.upload-unsigned-installer-artifacts.outputs.artifact-id }}'
