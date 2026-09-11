@@ -38,11 +38,13 @@ Function .onInit
 
   ; Stop, rather than say something and carry on regardless. This used to show the message and
   ; then install over the running app anyway, which is not a warning, it is a note about what is
-  ; being ignored. Two releases were installed that way and both left the version in Add or remove
-  ; programs reading 3.0.2.0 while the files on disk were newer - the same install run silently
-  ; wrote every other value in that key correctly, so the failure was partial and invisible.
-  ; Whatever the exact mechanism, copying an executable over itself while it runs has no good
-  ; version, and the uninstaller has always refused for the same reason.
+  ; being ignored. Copying an executable over itself while it runs has no good version, and the
+  ; uninstaller has always refused for the same reason.
+  ;
+  ; The reason first given for this was wrong. Two releases installed over the running app were
+  ; said to have left Add or remove programs on an older version; the checks that said so read a
+  ; private registry overlay belonging to the program they were run from, and the real entry was
+  ; right all along. The refusal stands without it.
   ;
   ; MB_OK rather than a retry prompt because a silent install has nobody to ask. /SD IDOK dismisses
   ; it and the Quit below still runs, so an unattended install fails with an error level instead of
@@ -334,11 +336,11 @@ Section
   WriteRegStr SHCTX "${UNINST_KEY}" "InstallLocation" $INSTDIR
   WriteRegDWORD SHCTX "${UNINST_KEY}" "EstimatedSize" "$0"
 
-  ; The record of what those writes did. More than once the version above has not stuck - every file
-  ; new, Add or remove programs still naming the release before - including an install through the
-  ; updater with nothing running, and nothing left behind could say whether the write failed or was
-  ; undone afterwards. The error flag gathers any write above that failed; the values are read back
-  ; straight after. The app corrects the entry when it starts, so this is evidence, not the fix.
+  ; The record of what those writes did: the entry before, whether any write above reported an
+  ; error - the flag gathers them - and the entry read back straight after. It is what showed the
+  ; version was never failing to stick: read back here it was right, while the check that said
+  ; otherwise was reading a private registry overlay. Kept, because the next surprise about this
+  ; entry will want the same evidence.
   StrCpy $5 "none"
   ${If} ${Errors}
     StrCpy $5 "at least one write reported an error"

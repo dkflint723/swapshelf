@@ -9,12 +9,14 @@ namespace DLSS_Swapper.Helpers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The installer writes DisplayVersion into this entry, and more than once it has not stuck: 3.0.3.0,
-/// 3.0.4.0 and 3.0.6.1 each installed every file while the entry went on naming the release before.
-/// 3.0.6.1 came through the in-app updater with nothing running, and the key was written at the moment
-/// of the install - so the explanation 3.0.5.0 shipped with, installing over a running copy, was not
-/// the whole story, and the actual mechanism is still unknown. The installer now records what its
-/// writes reported. This makes the entry right on the first launch, whatever the installer managed.
+/// The installer writes DisplayVersion into this entry, and the entry can still be wrong afterwards.
+/// A program running as a Windows app package gives the processes it starts a private overlay of the
+/// current user's registry, and an installer started from inside one writes its entry into that
+/// overlay: the real entry never hears about the install. That is how this was found, the long way
+/// round. The environment these releases are built in is such a package; every check made from it read
+/// the overlay's stale copy, and for two weeks it looked as though the installer's write did not stick
+/// - 3.0.5.0's notes blamed a running app - while the real entry was right. So the installed copy puts
+/// the real entry right when it starts, which covers an install started from anywhere.
 /// </para>
 /// <para>
 /// Only the installed copy corrects it. A build started from anywhere else - a development build, a

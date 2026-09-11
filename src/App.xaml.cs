@@ -278,7 +278,8 @@ public sealed partial class App : Application, IUiDispatcher
                 }
 
                 // Every launch, not weekly like the size below: a version that is wrong is wrong now.
-                // The installer's own write of it has failed to stick more than once; see UninstallEntry.
+                // An install started from inside another program's registry overlay never reaches this
+                // entry at all; see UninstallEntry.
                 var replaced = UninstallEntry.KeepVersionCurrent(dlssSwapperRegistryKey, AppContext.BaseDirectory, AppVersion.Display);
                 if (replaced is not null)
                 {

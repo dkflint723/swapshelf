@@ -18,26 +18,29 @@ working.
 
 ## v3.0.6.2 — the version Add or remove programs shows
 
-Installing 3.0.6.1 through the in-app updater left Add or remove programs saying 3.0.5.0, with every
-file new and nothing running. 3.0.3.0 and 3.0.4.0 did the same. 3.0.5.0's answer — refusing to install
-over a running copy — turned out not to be the whole story: this time the installer's registry writes
-ran at the moment of the install, the installer carried no version but the new one, and the entry
-still named the old release. What undoes it is not known yet.
+This release set out to fix Add or remove programs showing an older version after an install, and the
+record it added showed there was nothing to fix. Installed through the in-app updater, 3.0.6.2 read its
+entry back as 3.0.6.2 straight after writing it, and the real entry says 3.0.6.2. The older version was
+only ever visible from inside the environment the checks were made from. The development environment
+these releases are built in runs as a Windows app package, and programs started from it see a private
+overlay of the registry; an installer started from there on 30 August had written its entry into that
+overlay, and every check since read it. The same thing is almost certainly what 3.0.5.0's notes
+described for 3.0.3.0 and 3.0.4.0. Its explanation, installing over a running copy, was wrong. The
+refusal it added stays, because writing over a running program is a bad idea anyway.
 
-So the app now puts it right. When the installed copy starts, it corrects the version in its Add or
-remove programs entry, and leaves a note beside it saying that it did. Only the copy running from the
-install folder does this, so a copy started from anywhere else never stamps its version on the
-installed one's entry.
+What this release keeps:
 
-And the installer keeps a record, `install-registry.txt` beside the app: the version the entry held
-before the install, whether any of the installer's registry writes reported an error, and what the
-entry held straight after. The next time the version does not stick, that says whether the write
-failed or was undone afterwards.
+- When the installed copy starts, it puts its own version into its Add or remove programs entry if the
+  entry says otherwise, and leaves a note beside it saying that it did. That covers an install started
+  from inside an environment like the one above, whose registry writes never reach the real entry. Only
+  the copy running from the install folder does this, so a copy started from anywhere else never stamps
+  its version on the installed one's entry.
+- The installer keeps a record, `install-registry.txt` beside the app: what the entry held before the
+  install, whether any of its registry writes reported an error, and what it held straight after.
 
-Also fixed: since 3.0.0.0, the diagnostics text said "Swapshelf: 1.0.0.0", and so did the version
-sent to GitHub with each request. Both read the number from the part of the app that holds its data,
-which is versioned on its own, rather than from the program that was running. They say the release
-now.
+Also fixed: since 3.0.0.0, the diagnostics text said "Swapshelf: 1.0.0.0", and so did the version sent
+to GitHub with each request. Both read the number from the part of the app that holds its data, which is
+versioned on its own, rather than from the program that was running. They say the release now.
 
 ## v3.0.6.1 — recovery leaves a running swap alone
 
@@ -182,6 +185,10 @@ already finished.
 
 If you install this over a running copy, it will now tell you to close it and stop. That is the
 point, though it does mean this particular update has to be installed the way it is asking you to.
+
+**Correction, from 3.0.6.2:** the diagnosis above was wrong. Those releases did not leave Add or remove
+programs on 3.0.2.0. The checks that said so read a private overlay of the registry in the environment
+they were made from, and the real entry was right. The refusal stays anyway.
 
 ## v3.0.4.0 — the covers come back
 
