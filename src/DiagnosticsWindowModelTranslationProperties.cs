@@ -1,4 +1,4 @@
-﻿using DLSS_Swapper.Attributes;
+using DLSS_Swapper.Attributes;
 using DLSS_Swapper.Helpers;
 using DLSS_Swapper.Interfaces;
 

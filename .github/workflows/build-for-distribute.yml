@@ -1,4 +1,4 @@
-﻿name: Build DLSS Swapper
+name: Build DLSS Swapper
 
 on:
   push:
