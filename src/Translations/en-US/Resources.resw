@@ -976,6 +976,10 @@
   <data name="Game_Reset_AccessDeniedAdmin" xml:space="preserve">
     <value>Unable to reset to default. Running Swapshelf as administrator may fix this.</value>
   </data>
+  <data name="Game_GameRunning_CloseFirst" xml:space="preserve">
+    <value>This game appears to be running. Close it and try again - nothing has been changed.</value>
+    <comment>Shown before a swap or restore when a process is running from the game's install folder.</comment>
+  </data>
   <data name="Game_Reset_FileInUse" xml:space="preserve">
     <value>Unable to reset to default. It appears to be in use by another program. Is your game currently running?</value>
   </data>
@@ -1498,6 +1502,10 @@ If you have checked these and your game is still not showing up there may be a b
   </data>
   <data name="GitHubUpdater_UpdateAvailable" xml:space="preserve">
     <value>Update Available</value>
+  </data>
+  <data name="GitHubUpdater_UpdateDidNotMatch" xml:space="preserve">
+    <value>The downloaded update does not match what GitHub published for this release, so it was not installed and has been deleted. You can download the release yourself from the release page.</value>
+    <comment>Shown when the installer's SHA-256 does not match the digest GitHub reports for the asset.</comment>
   </data>
   <data name="GitHubUpdater_UpdateDownloadFailed" xml:space="preserve">
     <value>Could not download update.</value>

@@ -233,6 +233,8 @@ public class NewResourceStringTests
     [InlineData("Upscalers_ImportOnlyBodyTemplate")]
     [InlineData("Upscalers_ImportFromLocalFiles")]
     [InlineData("DllManager_SignatureRemovedDll")]
+    [InlineData("Game_GameRunning_CloseFirst")]
+    [InlineData("GitHubUpdater_UpdateDidNotMatch")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

@@ -10,6 +10,7 @@ using CommunityToolkit.WinUI.Controls;
 using DLSS_Swapper.Extensions;
 using DLSS_Swapper.Helpers;
 using DLSS_Swapper.UserControls;
+using DLSS_Swapper.Releases;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -324,6 +325,37 @@ internal class GitHubUpdater
         });
     }
 
+    /// <summary>
+    /// The downloaded installer is not the file GitHub published for this release.
+    /// </summary>
+    /// <remarks>
+    /// Its own type so the download failure handler can tell "the network let us down" from "the
+    /// bytes are wrong", and delete the file in the second case rather than offer to reuse it.
+    /// </remarks>
+    sealed class UpdateIntegrityException : Exception
+    {
+        public UpdateIntegrityException(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Hashes the file on disk and compares it to the digest GitHub published for the asset.
+    /// </summary>
+    /// <remarks>
+    /// Called twice: once as the download lands, and again immediately before the installer is
+    /// started, because the file sits in a folder any process running as this user can write to and
+    /// the first check does not cover the seconds between it and the launch.
+    /// </remarks>
+    static bool DownloadedUpdateMatchesRelease(string path, GitHubReleaseAsset gitHubAsset)
+    {
+        using (var fileStream = File.OpenRead(path))
+        {
+            var actual = fileStream.GetSha256Hash();
+            return ReleaseDigest.Matches(gitHubAsset.Digest, actual);
+        }
+    }
+
     async Task DownloadAndInstallAsync(GitHubRelease gitHubRelease, GitHubReleaseAsset gitHubAsset, XamlRoot xamlRoot)
     {
 #if PORTABLE
@@ -425,6 +457,17 @@ internal class GitHubUpdater
                         throw new Exception("DownloadFileToStreamAsync returned false.");
                     }
 
+                    // The digest was already in hand - it decided above whether a leftover file
+                    // could be reused - and a fresh download went from here to Process.Start without
+                    // being asked the same question. For an unsigned installer this comparison is
+                    // the only thing between "GitHub served this" and "this ran as you".
+                    fileStream.Position = 0;
+                    var downloadedHash = fileStream.GetSha256Hash();
+                    if (ReleaseDigest.Matches(gitHubAsset.Digest, downloadedHash) == false)
+                    {
+                        throw new UpdateIntegrityException($"Downloaded {gitHubAsset.Name} hashed to {downloadedHash}, GitHub published {gitHubAsset.Digest}.");
+                    }
+
                     downloadingDialog.Hide();
                 }
 
@@ -440,10 +483,26 @@ internal class GitHubUpdater
                 Logger.Error(ex);
                 downloadingDialog.Hide();
 
+                // A file that does not match must not sit in the updates folder where the next
+                // attempt would find it and, its digest now failing, download over it anyway - or
+                // worse, where something else finds it first.
+                var integrityFailure = ex is UpdateIntegrityException;
+                if (integrityFailure)
+                {
+                    try
+                    {
+                        File.Delete(tempDownloadFile);
+                    }
+                    catch (Exception deleteErr)
+                    {
+                        Logger.Error(deleteErr);
+                    }
+                }
+
                 var downloadErrorDialog = new EasyContentDialog(xamlRoot)
                 {
                     Title = ResourceHelper.GetString("General_Error"),
-                    Content = ResourceHelper.GetString("GitHubUpdater_UpdateDownloadFailed"),
+                    Content = ResourceHelper.GetString(integrityFailure ? "GitHubUpdater_UpdateDidNotMatch" : "GitHubUpdater_UpdateDownloadFailed"),
                     PrimaryButtonText = ResourceHelper.GetString("GitHubUpdater_ViewUpdate"),
                     CloseButtonText = ResourceHelper.GetString("General_Cancel"),
                     DefaultButton = ContentDialogButton.Primary,
@@ -482,6 +541,34 @@ internal class GitHubUpdater
 
             // Give the popup time to show.
             await Task.Delay(500);
+
+            // Verified again on the way in, not only on the way down. The file has sat in a folder
+            // any process running as this user can write to, for however long the install dialog was
+            // open. If it is no longer the file GitHub published, it does not run.
+            if (DownloadedUpdateMatchesRelease(tempDownloadFile, gitHubAsset) == false)
+            {
+                Logger.Error($"{tempDownloadFile} no longer matches the published digest at launch time. Not starting it.");
+                updatingDialog.Hide();
+
+                try
+                {
+                    File.Delete(tempDownloadFile);
+                }
+                catch (Exception deleteErr)
+                {
+                    Logger.Error(deleteErr);
+                }
+
+                var mismatchDialog = new EasyContentDialog(xamlRoot)
+                {
+                    Title = ResourceHelper.GetString("General_Error"),
+                    Content = ResourceHelper.GetString("GitHubUpdater_UpdateDidNotMatch"),
+                    CloseButtonText = ResourceHelper.GetString("General_Okay"),
+                    DefaultButton = ContentDialogButton.Close,
+                };
+                await mismatchDialog.ShowAsync();
+                return;
+            }
 
             try
             {
