@@ -238,6 +238,10 @@ public class NewResourceStringTests
     [InlineData("Game_Reset_BackupTampered")]
     [InlineData("DllManager_SignedByOtherPublisherTemplate")]
     [InlineData("Game_Swap_SignedByOtherPublisherTemplate")]
+    [InlineData("RiskAck_AppliesTo")]
+    [InlineData("RiskAck_GameWithAntiCheatTemplate")]
+    [InlineData("RiskAck_PlayCleanHint")]
+    [InlineData("RiskAck_Continue")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

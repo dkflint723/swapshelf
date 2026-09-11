@@ -1702,6 +1702,19 @@ If this keeps happening, please file a report on the issue tracker.</value>
 
 Because of this we recommend using caution for multiplayer games.</value>
   </data>
+  <data name="RiskAck_AppliesTo" xml:space="preserve">
+    <value>This applies to:</value>
+  </data>
+  <data name="RiskAck_GameWithAntiCheatTemplate" xml:space="preserve">
+    <value>{0} — uses {1}</value>
+    <comment>{0} is the game title, {1} the anti-cheat system found in its folder (e.g. Easy Anti-Cheat).</comment>
+  </data>
+  <data name="RiskAck_PlayCleanHint" xml:space="preserve">
+    <value>Play clean puts the originals back when the game closes, so a swap does not outlive the session.</value>
+  </data>
+  <data name="RiskAck_Continue" xml:space="preserve">
+    <value>I understand, continue</value>
+  </data>
   <data name="MainWindow_NoteForMultiplayerGames_Title" xml:space="preserve">
     <value>Note for multiplayer games</value>
   </data>

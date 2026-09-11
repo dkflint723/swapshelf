@@ -811,7 +811,10 @@ public partial class GameControlModel : ObservableObject
         {
             // Before the picker opens, not inside its swap - the picker is itself a ContentDialog
             // and WinUI allows one per root, so a warning shown from within it would throw.
-            await MultiplayerWarning.EnsureShownAsync(gameControl.XamlRoot);
+            if (await MultiplayerWarning.EnsureAcknowledgedAsync(gameControl.XamlRoot, new[] { Game }) == false)
+            {
+                return;
+            }
 
             var dialog = new EasyContentDialog(gameControl.XamlRoot)
             {

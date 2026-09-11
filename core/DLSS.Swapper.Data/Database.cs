@@ -180,6 +180,11 @@ internal class Database
                 "last",
                 "scanned",
                 "at",
+                // risk_acknowledged_at and anti_cheat: the per-game anti-cheat acknowledgement.
+                "risk",
+                "acknowledged",
+                "anti",
+                "cheat",
 
                 // game_dll_pin and its reason / pinned_at columns.
                 "dll",

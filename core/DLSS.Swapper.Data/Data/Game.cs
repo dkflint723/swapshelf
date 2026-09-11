@@ -22,6 +22,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DLSS_Swapper.Signing;
+using DLSS_Swapper.Compatibility;
 
 namespace DLSS_Swapper.Data;
 
@@ -248,6 +249,31 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     /// </remarks>
     [Column("last_scanned_at")]
     public DateTime? LastScannedAt { get; set; } = null;
+
+    /// <summary>
+    /// When the user last said "I understand" to the anti-cheat note for this game, or null if never.
+    /// </summary>
+    /// <remarks>
+    /// Per game, not per install. The note used to show once, ever, before the first swap of any
+    /// game and then never again - so by the time it applied to a multiplayer game with an
+    /// anti-cheat it had been dismissed weeks earlier over a single-player one, unread. Cleared by
+    /// <see cref="RecordAntiCheat"/> when an anti-cheat is first found, so the question is asked
+    /// again with the name in it.
+    /// </remarks>
+    [Column("risk_acknowledged_at")]
+    public DateTime? RiskAcknowledgedAt { get; set; } = null;
+
+    /// <summary>
+    /// The anti-cheat system found in this game's folder on the last scan, or null when none was.
+    /// </summary>
+    /// <remarks>
+    /// Advisory. It decides what the note says and whether to ask again, never whether a swap may
+    /// happen. A plain column on purpose: sqlite-net materialises a row by setting properties in
+    /// declaration order, so logic in a setter would run on load and clear an acknowledgement that
+    /// was just read.
+    /// </remarks>
+    [Column("anti_cheat")]
+    public string? AntiCheat { get; set; } = null;
 
     /// <summary>
     /// How long a "there is nothing in this game" answer is trusted for.
@@ -559,6 +585,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 var dllPaths = TakeDllPathsFromLastCheck()
                     ?? Directory.GetFiles(InstallPath, "*.dll", enumerationOptions);
 
+                // Which anti-cheat this game carries, from the dll paths just enumerated plus the
+                // top-level folders - both already cheap. It decides what the anti-cheat note says
+                // and whether a game that gains one after being acknowledged is asked about again.
+                RecordAntiCheat(dllPaths);
+
                 /*
                 var dlssDllPaths = Directory.GetFiles(InstallPath, "nvngx_dlss.dll", enumerationOptions);
                 var dlssgDllPaths = Directory.GetFiles(InstallPath, "nvngx_dlssg.dll", enumerationOptions);
@@ -790,18 +821,54 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     }
 
     /// <summary>
-    /// Keeps a copy of a dll the first time we ever see the game it belongs to.
+    /// Notes which anti-cheat, if any, this game's folder carries, and asks for the acknowledgement
+    /// again if one has just appeared.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Only safe on first sight. On any later scan we cannot tell a dll the game shipped from one
-    /// that was swapped in, so backing up then could record a swapped dll as the original and make
-    /// "reset to default" restore the wrong thing.
-    /// </para>
-    /// <para>
-    /// Never overwrites an existing backup, so a game that already has one keeps it.
-    /// </para>
+    /// Fed the dll paths the scan already enumerated - EasyAntiCheat_x64.dll and BEClient_x64.dll are
+    /// dlls - plus the names of the top-level folders, which is one directory listing. Never throws:
+    /// a game that cannot be read is a game with no markers to read.
     /// </remarks>
+    internal void RecordAntiCheat(IEnumerable<string> dllPaths)
+    {
+        try
+        {
+            var markers = new List<string>();
+            foreach (var dllPath in dllPaths)
+            {
+                markers.Add(Path.GetRelativePath(InstallPath, dllPath));
+            }
+
+            try
+            {
+                foreach (var directory in Directory.EnumerateDirectories(InstallPath))
+                {
+                    markers.Add(Path.GetFileName(directory));
+                }
+            }
+            catch (Exception)
+            {
+                // A folder that will not list still had its dlls walked above.
+            }
+
+            var detected = AntiCheatMarkers.Detect(markers);
+
+            // Found for the first time after the user already said "I understand" for a game that
+            // had none: that answer was given without this information, so it is asked for again.
+            if (detected is not null && AntiCheat is null && RiskAcknowledgedAt is not null)
+            {
+                Logger.Info($"{Title} now carries {detected}; the anti-cheat note will be shown again for it.");
+                RiskAcknowledgedAt = null;
+            }
+
+            AntiCheat = detected;
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err);
+        }
+    }
+
     /// <summary>
     /// Whether this particular dll has a saved copy of the original beside it.
     /// </summary>

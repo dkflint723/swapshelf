@@ -36,23 +36,6 @@ public class Settings
         }
     }
 
-    bool _hasShownMultiplayerWarning;
-    public bool HasShownMultiplayerWarning
-    {
-        get { return _hasShownMultiplayerWarning; }
-        set
-        {
-            if (_hasShownMultiplayerWarning != value)
-            {
-                _hasShownMultiplayerWarning = value;
-                if (_autoSave)
-                {
-                    SaveJson();
-                }
-            }
-        }
-    }
-
     // How far the undone-swaps notice has been read. Dismissing the bar stores the newest change
     // it showed, so only a swap undone after that brings it back. A boolean would have silenced
     // every future undone swap the first time the bar was closed.

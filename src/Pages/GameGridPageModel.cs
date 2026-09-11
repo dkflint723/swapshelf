@@ -1188,8 +1188,12 @@ public partial class GameGridPageModel : ObservableObject
             return;
         }
 
-        // Every update route funnels through here, so this is the one gate for the batch side.
-        await MultiplayerWarning.EnsureShownAsync(gameGridPage.XamlRoot);
+        // Every update route funnels through here, so this is the one gate for the batch side. Per
+        // game, and it can say no: a batch the user backs out of is a batch that did not run.
+        if (await MultiplayerWarning.EnsureAcknowledgedAsync(gameGridPage.XamlRoot, updates.Select(x => x.Game).ToList()) == false)
+        {
+            return;
+        }
 
         var batch = new UpdateBatchModel();
         UpdateBatch = batch;
