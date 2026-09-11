@@ -16,6 +16,29 @@ them apart without anyone having to remember a rule. It stays four plain numbers
 updater packs them into 16 bits each, so a suffix like `-fork.3` would silently stop update checks
 working.
 
+## v3.0.6.2 — the version Add or remove programs shows
+
+Installing 3.0.6.1 through the in-app updater left Add or remove programs saying 3.0.5.0, with every
+file new and nothing running. 3.0.3.0 and 3.0.4.0 did the same. 3.0.5.0's answer — refusing to install
+over a running copy — turned out not to be the whole story: this time the installer's registry writes
+ran at the moment of the install, the installer carried no version but the new one, and the entry
+still named the old release. What undoes it is not known yet.
+
+So the app now puts it right. When the installed copy starts, it corrects the version in its Add or
+remove programs entry, and leaves a note beside it saying that it did. Only the copy running from the
+install folder does this, so a copy started from anywhere else never stamps its version on the
+installed one's entry.
+
+And the installer keeps a record, `install-registry.txt` beside the app: the version the entry held
+before the install, whether any of the installer's registry writes reported an error, and what the
+entry held straight after. The next time the version does not stick, that says whether the write
+failed or was undone afterwards.
+
+Also fixed: since 3.0.0.0, the diagnostics text said "Swapshelf: 1.0.0.0", and so did the version
+sent to GitHub with each request. Both read the number from the part of the app that holds its data,
+which is versioned on its own, rather than from the program that was running. They say the release
+now.
+
 ## v3.0.6.1 — recovery leaves a running swap alone
 
 A fix on top of 3.0.6.0. If you are coming from 3.0.5.0, the entry below this one is where the
