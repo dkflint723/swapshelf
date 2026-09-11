@@ -16,6 +16,99 @@ them apart without anyone having to remember a rule. It stays four plain numbers
 updater packs them into 16 bits each, so a suffix like `-fork.3` would silently stop update checks
 working.
 
+## v3.0.6.0 — every step of a swap, checked
+
+This release comes out of a review of everything Swapshelf does between downloading a dll and
+putting a game back the way it was. Most of it only shows when something has already gone wrong,
+which is exactly when it has to work. Some of it you will see the first time you swap.
+
+### What you will see
+
+**The anti-cheat note is asked per game.** It used to appear once per installation, before the
+first swap of any game, and never again — so by the time it applied to a multiplayer game it had
+been dismissed weeks earlier over a single-player one. It now lists the games a swap is about,
+names the anti-cheat Swapshelf found in any of them, such as Easy Anti-Cheat or BattlEye, and makes
+Cancel the default button. Cancelling cancels the swap. A game that gains an anti-cheat after you
+said yes is asked about again.
+
+**How much is known about a version, before you pick it.** The version picker and the update preview
+label each choice Known good, Likely fine, Experimental or No evidence yet, with a one-line reason.
+Each label has a shape of its own, so no colour has to carry it. The file the game shipped with is
+Known good. A developer build, a file not signed by the company that makes it, or an older release
+line than the game shipped with is Experimental. With nothing known either way, it says so rather
+than guessing.
+
+**Games that use NVIDIA Streamline say so** on their page. In those games, frame generation and ray
+reconstruction swaps across release lines are marked Experimental unless you have swapped that
+version into the game before: Streamline loads those two as a matched set, which is where
+cross-line swaps are known to go wrong.
+
+**Restore asks before erasing a change.** If a dll changed after Swapshelf swapped it — a game
+update, a mod, a fix applied by hand — restore stops and says so, with Restore anyway to go ahead.
+It used to write over it without a word.
+
+**An interrupted swap is put back.** Each swap is written down before the game folder is touched. If
+Swapshelf is closed or killed partway through one, the next launch returns that game to how it was
+before the swap began, and the games page says which game.
+
+**Diagnostics you can paste anywhere.** The copied text now includes what each manifest holds and
+the last 200 lines of the log, with folder paths replaced by placeholders such as
+`<Game: Alan Wake 2>` and `<UserProfile>`. Tick *Include real folder paths* to see them as they are.
+
+### Checks that now happen
+
+- A game that is running is refused, with a message to close it first, before anything is touched.
+  That goes for swaps and restores alike.
+- A dll built for a different processor than the one it replaces, 32-bit over 64-bit or the
+  reverse, is refused. The game could not have loaded it.
+- A signature has to come from the company that makes that dll: NVIDIA for DLSS, AMD for FSR, Intel
+  for XeSS. Any valid signature used to be enough. A dll whose signature was stripped after signing
+  is now named as such, instead of "not trusted".
+- A saved original is checked against the hash recorded when it was saved, before it is put back.
+  One that no longer matches is refused rather than restored as though it were the original.
+  Backups made by older builds have no recorded hash and are restored as before.
+- SHA-256 is recorded beside MD5 for every dll Swapshelf scans, imports or downloads, and a download
+  now checks the dll it extracted, not only the zip it came in.
+- The in-app updater checks the installer it downloads against the SHA-256 GitHub publishes for it,
+  before running it. That applies from this version on, to the updates that follow it.
+
+### A second copy of every original
+
+The copy of what a game shipped with lives beside its dll, as `nvngx_dlss.dll.dlsss`, inside the
+game folder — where Steam's verify, a launcher repair, or a patcher tidying unknown files can delete
+it. Swapshelf now keeps a second copy of every saved original in its own data folder, under
+`originals`, and puts a missing `.dlsss` back from it.
+
+The originals you already have are copied in the background once the first scan after this update
+finishes. That costs disk once, between 20 and 170 MB for each saved dll, and no copy is made that
+would leave less than 1 GB free. There is no switch for it on the Settings page yet: to turn it off,
+set `KeepOriginalCopiesInLibrary` to `false` in `settings.json`, in the `json` folder of
+`%LOCALAPPDATA%\Swapshelf` (or of `StoredData` beside the portable build).
+
+### Fixed
+
+- The number of games using each dll in your library stays current as games change, imported dlls
+  included.
+- A download whose archive is wrong says what is wrong with it.
+- Paths longer than 260 characters work.
+- The bundled manifest includes DLSS 310.8 and 310.9, so they are there before the first manifest
+  download.
+
+### Command line
+
+`restore` leaves a dll that changed since it was swapped alone, and says so, unless it is given
+`--force`. [Hotswap](https://github.com/dkflint723/hotswap) does not pass it, so a restore from
+Steam after a game update now asks you to open the game in Swapshelf and choose Restore there. Swap
+and restore results carry a `failure` field naming the reason. The contract version is still 1,
+since nothing was removed or repurposed.
+
+### Under it
+
+The 2,600-line game class is split into files by concern — scanning, saved originals, covers and
+swapping — and the build treats warnings as errors, after the fourteen it carried were fixed at
+their source. CI adds Dependabot, CodeQL, a check for vulnerable packages, and a bill of materials
+for each release build, and a version tag now runs the distribute workflow as well.
+
 ## v3.0.5.0 — the installer stops instead of warning
 
 The installer has always checked whether Swapshelf was running, said "please close it before

@@ -32,7 +32,7 @@
       VersionConsistencyTests fails if they drift - they did, and 1.2.6.0 shipped an installer whose
       file properties and uninstall entry both still said 1.2.5.1.
     -->
-    <Version>3.0.5.0</Version>
+    <Version>3.0.6.0</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
