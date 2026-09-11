@@ -1,4 +1,4 @@
-name: Build DLSS Swapper
+﻿name: Build DLSS Swapper
 
 on:
   push:
@@ -178,6 +178,25 @@ jobs:
         name: DLSS.Swapper-${{ env.VERSION }}-portable
         path: ${{ github.workspace }}\package\${{ env.OUTPUT_ZIP }}
         if-no-files-found: error
+
+    # A CycloneDX bill of materials for this exact build, as its own artifact. continue-on-error,
+    # deliberately: the SBOM describes the release, it is not part of it, and a change in the tool
+    # must not be what stops a fix shipping.
+    - name: Generate SBOM
+      id: sbom
+      continue-on-error: true
+      shell: pwsh
+      run: |
+        dotnet tool install --global CycloneDX
+        dotnet CycloneDX "DLSS Swapper.sln" --json --output sbom --filename "Swapshelf-${{ env.VERSION }}.cdx.json"
+
+    - name: Upload SBOM artifact
+      if: ${{ steps.sbom.outcome == 'success' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: Swapshelf-${{ env.VERSION }}-sbom
+        path: ${{ github.workspace }}\sbom\Swapshelf-${{ env.VERSION }}.cdx.json
+        if-no-files-found: warn
 
     - name: Package DLSS Swapper installer
       run: ${{ github.workspace }}\package\package_Installer.cmd

@@ -1,0 +1,56 @@
+name: CodeQL
+
+# Static analysis of the C#. This app writes into game folders, extracts archives, verifies
+# signatures and runs a downloaded installer, so the classes of bug CodeQL looks for - path
+# handling, injection, unsafe deserialisation - are the ones that matter here.
+#
+# Manual build mode, because autobuild does not know how to build a Windows App SDK project. The
+# build steps mirror tests.yml so the analysed binaries are the ones the tests run against.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # Weekly, off the hour, so a new query pack is applied to unchanged code too.
+    - cron: '41 6 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze C#
+    runs-on: windows-2025
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.202'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: csharp
+        build-mode: manual
+        queries: security-and-quality
+
+    # Building the two test projects builds every project they reference - core, data, the app and
+    # the cli - which is the whole codebase. Same invocation as tests.yml, minus running them.
+    - name: Build
+      run: |
+        dotnet build "tests/DLSS.Swapper.Core.Tests/DLSS.Swapper.Core.Tests.csproj" -c Debug
+        dotnet build "tests/DLSS.Swapper.App.Tests/DLSS.Swapper.App.Tests.csproj" -c Debug
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:csharp"

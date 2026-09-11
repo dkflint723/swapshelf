@@ -25,6 +25,20 @@ jobs:
     - name: Display .NET Info
       run: dotnet --info
 
+    # Before anything is built. A dependency with a published vulnerability fails the run here, with
+    # the package named, rather than shipping in the next release. Transitive packages included -
+    # the one that bites is rarely the one that was asked for.
+    - name: Check for vulnerable packages
+      shell: pwsh
+      run: |
+        dotnet restore "DLSS Swapper.sln"
+        $report = dotnet list "DLSS Swapper.sln" package --vulnerable --include-transitive 2>&1 | Out-String
+        Write-Output $report
+        if ($report -match 'has the following vulnerable packages') {
+          Write-Error 'A referenced package has a known vulnerability. See the report above.'
+          exit 1
+        }
+
     # Pure net10.0 with no Windows App SDK dependency, so it runs in seconds. Kept as its own step
     # so a core rule breaking is reported as that, rather than being buried in an app build.
     - name: Run core tests
@@ -34,4 +48,3 @@ jobs:
     # suite by some minutes, which is why it runs second.
     - name: Run app tests
       run: dotnet test "tests/DLSS.Swapper.App.Tests/DLSS.Swapper.App.Tests.csproj" -c Debug --logger "console;verbosity=normal"
-

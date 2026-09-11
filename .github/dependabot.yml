@@ -1,0 +1,37 @@
+# Keeps the packages this ships and the actions that build it current, and says so in a pull request
+# rather than a surprise. Weekly, grouped, so it is one review a week and not one per package.
+#
+# Nothing here updates the dll manifest - that has its own scheduled workflow (manifest-sync.yml),
+# because the manifest is data from another project and is diffed and described on its own terms.
+
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - /src
+      - /core/DLSS.Swapper.Core
+      - /core/DLSS.Swapper.Data
+      - /cli/DLSS.Swapper.Cli
+      - /tests/DLSS.Swapper.App.Tests
+      - /tests/DLSS.Swapper.Core.Tests
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      # Minor and patch bumps land together. A major bump gets its own pull request, because the
+      # Windows App SDK and CommunityToolkit both change behaviour across majors and deserve a look.
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
