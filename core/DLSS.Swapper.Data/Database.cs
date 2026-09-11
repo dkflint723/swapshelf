@@ -187,6 +187,8 @@ internal class Database
                 "cheat",
                 // swapped_hash: what the app last wrote to a dll's path.
                 "swapped",
+                // streamline: whether sl.interposer.dll was seen in the game's folder.
+                "streamline",
 
                 // game_dll_pin and its reason / pinned_at columns.
                 "dll",

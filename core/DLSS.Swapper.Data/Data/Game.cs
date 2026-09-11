@@ -276,6 +276,18 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     public string? AntiCheat { get; set; } = null;
 
     /// <summary>
+    /// Whether the game's folder carries sl.interposer.dll, the entry point of NVIDIA Streamline.
+    /// </summary>
+    /// <remarks>
+    /// A fact for the game page and an input to swap confidence, never a gate. A Streamline game
+    /// loads DLSS Frame Generation and Ray Reconstruction through a matched set of plugins, so those
+    /// two are less of a drop-in there than the same dlls in a game that calls NGX directly. The
+    /// app does not offer Streamline's own plugins for swapping at all.
+    /// </remarks>
+    [Column("streamline")]
+    public bool UsesStreamline { get; set; } = false;
+
+    /// <summary>
     /// How long a "there is nothing in this game" answer is trusted for.
     /// </summary>
     /// <remarks>
@@ -589,6 +601,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // top-level folders - both already cheap. It decides what the anti-cheat note says
                 // and whether a game that gains one after being acknowledged is asked about again.
                 RecordAntiCheat(dllPaths);
+                RecordStreamline(dllPaths);
 
                 /*
                 var dlssDllPaths = Directory.GetFiles(InstallPath, "nvngx_dlss.dll", enumerationOptions);
@@ -822,6 +835,25 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 });
             }
         });
+    }
+
+    /// <summary>
+    /// Notes whether this game loads NVIDIA's dlls through Streamline, from the dll paths the scan
+    /// already enumerated.
+    /// </summary>
+    internal void RecordStreamline(IEnumerable<string> dllPaths)
+    {
+        var found = false;
+        foreach (var dllPath in dllPaths)
+        {
+            if (string.Equals(Path.GetFileName(dllPath), "sl.interposer.dll", StringComparison.OrdinalIgnoreCase))
+            {
+                found = true;
+                break;
+            }
+        }
+
+        UsesStreamline = found;
     }
 
     /// <summary>

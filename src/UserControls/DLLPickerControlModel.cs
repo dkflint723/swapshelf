@@ -86,6 +86,16 @@ public partial class DLLPickerControlModel : ObservableObject
     [ObservableProperty]
     public partial GameAsset? BackupGameAsset { get; set; } = null;
 
+    /// <summary>How much is known about the selected version in this game, or null with nothing selected.</summary>
+    [ObservableProperty]
+    public partial ConfidenceDisplay? SelectedConfidence { get; set; } = null;
+
+    /// <summary>
+    /// This game's history, loaded once after the picker opens. Null until then, which only means
+    /// the "swapped here before" rule has not had its say yet; the label is refreshed when it lands.
+    /// </summary>
+    IReadOnlyList<GameHistory>? _history;
+
     public bool CanCloseParentDialog { get; set; }
 
     public DLLPickerControlModelTranslationProperties TranslationProperties { get; } = new DLLPickerControlModelTranslationProperties();
@@ -146,6 +156,33 @@ public partial class DLLPickerControlModel : ObservableObject
         RebuildVersionGroups();
 
         ResetSelection();
+
+        LoadHistoryAsync().SafeFireAndForget();
+    }
+
+    async Task LoadHistoryAsync()
+    {
+        try
+        {
+            var history = await SwapConfidence.LoadHistoryAsync(Game);
+            App.CurrentApp.RunOnUIThread(() =>
+            {
+                _history = history;
+                RefreshConfidence();
+            });
+        }
+        catch (Exception err)
+        {
+            // The label is a courtesy; a failed history read must not take the picker down.
+            Logger.Error(err);
+        }
+    }
+
+    void RefreshConfidence()
+    {
+        SelectedConfidence = SelectedDLLRecord is null
+            ? null
+            : ConfidenceDisplay.For(SwapConfidence.Assess(Game, GameAssetType, SelectedDLLRecord, _history));
     }
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
@@ -167,6 +204,8 @@ public partial class DLLPickerControlModel : ObservableObject
             {
                 CanSwap = true;
             }
+
+            RefreshConfidence();
         }
         else if (e.PropertyName == nameof(CanSwap))
         {

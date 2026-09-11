@@ -39,6 +39,9 @@ public partial class PendingDllUpdate : ObservableObject
     /// <summary>What it would be replaced with.</summary>
     public required string ToVersion { get; init; }
 
+    /// <summary>How much is known about this version in this game, for the row and its tooltip.</summary>
+    public required ConfidenceDisplay Confidence { get; init; }
+
     /// <summary>Checked by default: the sheet offers to leave files out, it does not ask for opt in.</summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; } = true;
@@ -52,7 +55,8 @@ public partial class PendingDllUpdate : ObservableObject
     /// batch that writes into game folders. Everything the row shows is said here instead.
     /// </remarks>
     public string AccessibleDescription =>
-        ResourceHelper.GetFormattedResourceTemplate("Preview_RowDescriptionTemplate", GameTitle, EngineName, FromVersion, ToVersion);
+        ResourceHelper.GetFormattedResourceTemplate("Preview_RowDescriptionTemplate", GameTitle, EngineName, FromVersion, ToVersion)
+        + ". " + Confidence.Accessible;
 
     /// <summary>
     /// Every out of date file across the given games, newest available version for each.
@@ -94,6 +98,9 @@ public partial class PendingDllUpdate : ObservableObject
                     EngineName = DLLManager.Instance.GetAssetTypeName(assetType),
                     FromVersion = currentAsset?.DisplayVersion ?? string.Empty,
                     ToVersion = latestRecord.DisplayVersion,
+                    // Without history, which the sheet is built too synchronously to wait for. The
+                    // one rule that reads history simply does not fire here.
+                    Confidence = ConfidenceDisplay.For(SwapConfidence.Assess(game, assetType, latestRecord, history: null)),
                 });
             }
         }

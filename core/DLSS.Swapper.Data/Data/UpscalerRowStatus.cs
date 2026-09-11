@@ -76,6 +76,11 @@ public class UpscalerRowStatus
 
         var pin = game.DllPinFor(assetType);
 
+        // Said on NVIDIA's rows only: Streamline is how a game loads NVIDIA's dlls, and it changes
+        // what a frame generation or ray reconstruction swap is likely to do here.
+        var usesStreamline = game.UsesStreamline
+            && DllTypes.ForAssetType(assetType)?.Vendor == DllVendor.Nvidia;
+
         // What restoring this row would actually give back, read per path like hasBackup is: the
         // copy that belongs to the first installed location, not any copy of the same type.
         var savedOriginal = string.Empty;
@@ -93,7 +98,7 @@ public class UpscalerRowStatus
         {
             AssetType = assetType,
             Title = DLLManager.Instance.GetAssetTypeName(assetType),
-            Sentence = Describe(installed, newest, isBehind, hasBackup, multipleFound, game.SkipUpdates, pin, savedOriginal),
+            Sentence = Describe(installed, newest, isBehind, hasBackup, multipleFound, game.SkipUpdates, pin, savedOriginal, usesStreamline),
             Glyph = GlyphFor(isBehind, hasBackup, game.SkipUpdates, pin is not null),
             ActionLabel = string.IsNullOrEmpty(installed)
                 ? ResourceHelper.GetString("GamePage_Row_Choose")
@@ -117,7 +122,7 @@ public class UpscalerRowStatus
     /// the same reason — the holding is the point — but unlike left alone it still names the newer
     /// version, because the pin is a choice the user may want to revisit when something new lands.
     /// </remarks>
-    static string Describe(string installed, string newest, bool isBehind, bool hasSavedOriginal, bool multipleFound, bool skipUpdates, GameDllPin? pin, string savedOriginal)
+    static string Describe(string installed, string newest, bool isBehind, bool hasSavedOriginal, bool multipleFound, bool skipUpdates, GameDllPin? pin, string savedOriginal, bool usesStreamline)
     {
         var parts = new List<string>();
 
@@ -173,6 +178,13 @@ public class UpscalerRowStatus
         if (string.IsNullOrEmpty(savedOriginal) == false && savedOriginal != installed)
         {
             parts.Add(ResourceHelper.GetFormattedResourceTemplate("GamePage_Row_SavedOriginalTemplate", savedOriginal));
+        }
+
+        // A fact rather than a warning. The picker's confidence label is where it becomes advice,
+        // and only for the two dlls Streamline loads as a matched set.
+        if (usesStreamline && string.IsNullOrEmpty(installed) == false)
+        {
+            parts.Add(ResourceHelper.GetString("GamePage_Row_Streamline"));
         }
 
         return string.Join(ResourceHelper.GetString("GamePage_Row_ClauseSeparator"), parts);

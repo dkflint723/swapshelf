@@ -1314,6 +1314,62 @@ If you have checked these and your game is still not showing up there may be a b
   <data name="General_ApplicationRunningAsAdmin" xml:space="preserve">
     <value>This app is running with administrative privileges.</value>
   </data>
+  <data name="Confidence_KnownGood" xml:space="preserve">
+    <value>Known good</value>
+    <comment>Swap confidence level. The exact file the game shipped with.</comment>
+  </data>
+  <data name="Confidence_Likely" xml:space="preserve">
+    <value>Likely fine</value>
+    <comment>Swap confidence level. The kind of swap that works as a rule.</comment>
+  </data>
+  <data name="Confidence_Experimental" xml:space="preserve">
+    <value>Experimental</value>
+    <comment>Swap confidence level. A specific reason to expect trouble.</comment>
+  </data>
+  <data name="Confidence_Unknown" xml:space="preserve">
+    <value>No evidence yet</value>
+    <comment>Swap confidence level. Nothing is known either way.</comment>
+  </data>
+  <data name="Confidence_Reason_NoEvidence" xml:space="preserve">
+    <value>Nothing is known about this version in this game.</value>
+  </data>
+  <data name="Confidence_Reason_ShippedFile" xml:space="preserve">
+    <value>This is the exact file the game shipped with.</value>
+  </data>
+  <data name="Confidence_Reason_AlreadyInstalled" xml:space="preserve">
+    <value>This is the version installed now.</value>
+  </data>
+  <data name="Confidence_Reason_DevBuild" xml:space="preserve">
+    <value>A developer build, not a release.</value>
+  </data>
+  <data name="Confidence_Reason_UntrustedSignature" xml:space="preserve">
+    <value>Not signed by the company that makes this DLL.</value>
+  </data>
+  <data name="Confidence_Reason_SwappedHereBefore" xml:space="preserve">
+    <value>This version has been swapped into this game before.</value>
+  </data>
+  <data name="Confidence_Reason_StreamlineFrameGeneration" xml:space="preserve">
+    <value>This game loads NVIDIA's DLLs through Streamline, where frame generation and ray reconstruction across release lines depend on the matched integration.</value>
+  </data>
+  <data name="Confidence_Reason_SameLine" xml:space="preserve">
+    <value>The same release line as the version the game shipped with.</value>
+  </data>
+  <data name="Confidence_Reason_NewerLine" xml:space="preserve">
+    <value>A newer release line than the game shipped with. These are built to be drop-in.</value>
+  </data>
+  <data name="Confidence_Reason_OlderLine" xml:space="preserve">
+    <value>Older than the version the game shipped with. Features the game expects may be missing.</value>
+  </data>
+  <data name="Confidence_Reason_DifferentLine" xml:space="preserve">
+    <value>A different release line from the one the game shipped with. This SDK is only drop-in within a line.</value>
+  </data>
+  <data name="Confidence_Reason_UnknownFamily" xml:space="preserve">
+    <value>There is no compatibility rule for this kind of DLL yet.</value>
+  </data>
+  <data name="GamePage_Row_Streamline" xml:space="preserve">
+    <value>loaded through NVIDIA Streamline</value>
+    <comment>A clause in the upscaler row's sentence, lower case, joined with the others by the clause separator.</comment>
+  </data>
   <data name="General_Apply" xml:space="preserve">
     <value>Apply</value>
   </data>

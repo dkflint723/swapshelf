@@ -997,6 +997,7 @@
                                             <ColumnDefinition Width="180" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
                                         <!--
@@ -1038,7 +1039,32 @@
                                             without knowing which way is newer; here the whole
                                             question is what changes, so it is the substance.
                                         -->
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <!--
+                                            How much is known about this version in this game, as a
+                                            shape and a word, with the sentence behind it in the
+                                            tooltip and in the row's accessible name. Never colour
+                                            alone: the four glyphs are four different shapes.
+                                        -->
+                                        <StackPanel
+                                            Grid.Column="3"
+                                            Orientation="Horizontal"
+                                            Spacing="6"
+                                            VerticalAlignment="Center"
+                                            ToolTipService.ToolTip="{x:Bind Confidence.Reason}">
+                                            <FontIcon
+                                                Glyph="{x:Bind Confidence.Glyph}"
+                                                FontSize="11"
+                                                VerticalAlignment="Center"
+                                                Foreground="{ThemeResource DsTextSecondaryBrush}" />
+                                            <TextBlock
+                                                Text="{x:Bind Confidence.Label}"
+                                                FontSize="12"
+                                                MinWidth="96"
+                                                VerticalAlignment="Center"
+                                                TextWrapping="NoWrap"
+                                                Foreground="{ThemeResource DsTextSecondaryBrush}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <TextBlock
                                                 Text="{x:Bind FromVersion}"
                                                 FontSize="12"

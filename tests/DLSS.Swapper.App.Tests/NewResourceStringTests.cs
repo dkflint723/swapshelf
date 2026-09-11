@@ -246,6 +246,23 @@ public class NewResourceStringTests
     [InlineData("Game_Reset_TargetChanged")]
     [InlineData("GamePage_DllPicker_TargetChanged")]
     [InlineData("GamePage_DllPicker_RestoreAnyway")]
+    [InlineData("Confidence_KnownGood")]
+    [InlineData("Confidence_Likely")]
+    [InlineData("Confidence_Experimental")]
+    [InlineData("Confidence_Unknown")]
+    [InlineData("Confidence_Reason_NoEvidence")]
+    [InlineData("Confidence_Reason_ShippedFile")]
+    [InlineData("Confidence_Reason_AlreadyInstalled")]
+    [InlineData("Confidence_Reason_DevBuild")]
+    [InlineData("Confidence_Reason_UntrustedSignature")]
+    [InlineData("Confidence_Reason_SwappedHereBefore")]
+    [InlineData("Confidence_Reason_StreamlineFrameGeneration")]
+    [InlineData("Confidence_Reason_SameLine")]
+    [InlineData("Confidence_Reason_NewerLine")]
+    [InlineData("Confidence_Reason_OlderLine")]
+    [InlineData("Confidence_Reason_DifferentLine")]
+    [InlineData("Confidence_Reason_UnknownFamily")]
+    [InlineData("GamePage_Row_Streamline")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

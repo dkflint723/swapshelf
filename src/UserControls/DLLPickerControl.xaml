@@ -37,6 +37,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
 
@@ -167,6 +168,18 @@
               Title="{x:Bind ViewModel.TranslationProperties.NoDllsFoundText, Mode=OneWay}"
               Message="{x:Bind ViewModel.TranslationProperties.PleaseNavigateLibraryToDownloadDllsText, Mode=OneWay}">
         </InfoBar>
+
+        <!--
+            How much is known about the selected version in this game. A shape, a label and one
+            sentence of reason; no colour carries meaning alone. Hidden until something is selected.
+        -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" Visibility="{x:Bind ViewModel.SelectedConfidence, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+            <FontIcon Style="{StaticResource SagoeFluentIconsFontIcon}" Glyph="{x:Bind ViewModel.SelectedConfidence.Glyph, Mode=OneWay}" FontSize="14" VerticalAlignment="Top" Margin="0,2,0,0" />
+            <StackPanel Spacing="2">
+                <TextBlock Text="{x:Bind ViewModel.SelectedConfidence.Label, Mode=OneWay}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Bind ViewModel.SelectedConfidence.Reason, Mode=OneWay}" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource DsTextSecondaryBrush}" />
+            </StackPanel>
+        </StackPanel>
 
     </Grid>
 </UserControl>
