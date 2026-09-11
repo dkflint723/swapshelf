@@ -1250,6 +1250,24 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
     protected abstract Task UpdateCacheImageAsync();
 
+    /// <summary>
+    /// Whether something is running out of a game's install folder right now.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The swap executor already copes with a running game: the rename fails with a sharing
+    /// violation, it is classified as FileInUse, and everything is rolled back with nothing changed.
+    /// That is the safety net, and it stays. But a game that is running is not an error to recover
+    /// from, it is a reason not to begin - and the user is better told "close the game" before
+    /// anything is staged than "the swap failed" after.
+    /// </para>
+    /// <para>
+    /// The check is the one play-clean already polls with. Swappable so a test can say "running"
+    /// without having to run anything.
+    /// </para>
+    /// </remarks>
+    internal static Func<string, bool> IsRunningCheck { get; set; } = PlayCleanSession.AnyProcessUnder;
+
     internal async Task<(bool Success, string Message, bool PromptToRelaunchAsAdmin)> ResetDllAsync(GameAssetType gameAssetType)
     {
         // Restoring the original is the safe direction, but it is still a change to a game the user
@@ -1292,6 +1310,13 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         var unrestorableRecords = this.GameAssets
             .Where(x => x.AssetType == gameAssetType && restorableTargets.Contains(x.Path) == false)
             .ToList();
+
+        // Restoring is the safe direction, but a rename over a dll the game has open fails the same
+        // way a swap does. Asked first so the answer is "close the game", not a failed restore.
+        if (IsRunningCheck(InstallPath))
+        {
+            return (false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
+        }
 
         var resetResult = new DllSwapExecutor().Reset(restorePairs.Select(x => x.Current.Path).ToList());
 
@@ -1489,6 +1514,14 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             {
                 return (false, ResourceHelper.GetString("Game_Swap_UntrustedSignature"), false);
             }
+        }
+
+        // A running game holds its dlls open. The executor would notice when the rename failed and
+        // roll back cleanly - that safety net stays - but "close the game and try again" is a better
+        // answer than a failed swap, and this is where there is still nothing to undo.
+        if (IsRunningCheck(InstallPath))
+        {
+            return (false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
         }
 
         // Every location this game keeps the dll in is swapped as one operation. The executor backs up

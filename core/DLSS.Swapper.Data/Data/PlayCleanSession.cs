@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -177,7 +177,7 @@ internal sealed class PlayCleanSession
         PhaseChanged?.Invoke();
     }
 
-    static bool AnyProcessUnder(string installPath)
+    internal static bool AnyProcessUnder(string installPath)
     {
         foreach (var process in Process.GetProcesses())
         {
