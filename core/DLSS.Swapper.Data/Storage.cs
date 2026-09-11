@@ -110,6 +110,7 @@ static class Storage
         CreateDirectoryIfNotExists(GetStorageFolder());
         CreateDirectoryIfNotExists(GetDynamicJsonFolder());
         CreateDirectoryIfNotExists(GetImageCachePath());
+        CreateDirectoryIfNotExists(GetOriginalsFolder());
     }
 
 
@@ -120,6 +121,7 @@ static class Storage
         CreateDirectoryIfNotExists(GetStorageFolder());
         CreateDirectoryIfNotExists(GetDynamicJsonFolder());
         CreateDirectoryIfNotExists(GetImageCachePath());
+        CreateDirectoryIfNotExists(GetOriginalsFolder());
     }
 
     public static string GetTemp()
@@ -144,6 +146,14 @@ static class Storage
     public static string GetDynamicJsonFolder()
     {
         return Path.Combine(StoragePath, "json");
+    }
+
+    /// <summary>
+    /// The library's own copies of what each game shipped with. See <see cref="OriginalsStore"/>.
+    /// </summary>
+    public static string GetOriginalsFolder()
+    {
+        return Path.Combine(StoragePath, "originals");
     }
 
     public static string GetUpdatesFolder()

@@ -182,6 +182,28 @@ public class Settings
         }
     }
 
+    bool _keepOriginalCopiesInLibrary = true;
+
+    /// <summary>
+    /// Whether a saved original is also mirrored into the library folder, where a game update
+    /// cannot delete it. On by default; it costs disk, and that is the trade.
+    /// </summary>
+    public bool KeepOriginalCopiesInLibrary
+    {
+        get { return _keepOriginalCopiesInLibrary; }
+        set
+        {
+            if (_keepOriginalCopiesInLibrary != value)
+            {
+                _keepOriginalCopiesInLibrary = value;
+                if (_autoSave)
+                {
+                    SaveJson();
+                }
+            }
+        }
+    }
+
     bool _backupNewGamesAutomatically = true;
     public bool BackupNewGamesAutomatically
     {

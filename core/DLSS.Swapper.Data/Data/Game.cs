@@ -866,6 +866,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         {
             File.Copy(gameAsset.Path, backupPath);
             Logger.Info($"Backed up {gameAsset.Path} on first detection of {Title}.");
+
+            // And a second copy in the library, where a game update cannot take it. Mirrored from
+            // the .dlsss just written rather than from the game's file, so the two are the same bytes.
+            OriginalsStore.Mirror(ID, gameAsset.Path, backupPath, gameAsset.Version);
         }
         catch (Exception err)
         {
@@ -950,6 +954,15 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     void LoadBackupForGameAsset(GameAsset gameAsset, List<GameAsset> cachedGameAssets)
     {
         var backupPath = DllSwapExecutor.GetBackupPath(gameAsset.Path);
+
+        // A .dlsss that has gone - a game update, a verify, a patcher tidying up - comes back from
+        // the library mirror before the original is counted as lost. Checked against the mirror's
+        // own record on the way, so a damaged mirror is left where it is and named in the log.
+        if (File.Exists(backupPath) == false && OriginalsStore.TryRestoreBackup(ID, gameAsset.Path, backupPath))
+        {
+            Logger.Info($"Restored the missing saved original beside {gameAsset.Path} from the library.");
+        }
+
         if (File.Exists(backupPath))
         {
             var gameAssetBackup = new GameAsset()
