@@ -38,6 +38,16 @@ internal static class SwapExecutors
             }
         }
 
+        if (report.StaleRemoved > 0)
+        {
+            Logger.Info($"Removed {report.StaleRemoved} journal record(s) for operations that had nothing left to undo.");
+        }
+
+        if (report.StillRunning > 0)
+        {
+            Logger.Info($"Left {report.StillRunning} journal record(s) alone: the process that wrote them is still running.");
+        }
+
         return InterruptedSwapNotice.For(report);
     }
 }

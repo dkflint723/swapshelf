@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DLSS_Swapper.Swapping;
 
@@ -19,7 +20,14 @@ public sealed class RecoveredOperation
 
 public sealed class RecoveryReport
 {
+    /// <summary>Interrupted operations that were undone, in the order they were handled.</summary>
     public required IReadOnlyList<RecoveredOperation> Operations { get; init; }
+
+    /// <summary>Records whose operation had left nothing behind to undo - something later finished over it. Removed quietly.</summary>
+    public int StaleRemoved { get; init; }
+
+    /// <summary>Records left alone because the process that wrote them is still running.</summary>
+    public int StillRunning { get; init; }
 
     public bool IsEmpty => Operations.Count == 0;
 }
@@ -45,22 +53,58 @@ public sealed class RecoveryReport
 /// </remarks>
 public static class SwapRecovery
 {
-    public static RecoveryReport Recover(IFileSystem fileSystem, IOperationJournal journal)
+    /// <param name="isOwnerRunning">
+    /// Whether a record's process is still running. Defaults to <see cref="OperationOwner.IsRunning"/>;
+    /// replaceable so a test can stand in for another process.
+    /// </param>
+    public static RecoveryReport Recover(IFileSystem fileSystem, IOperationJournal journal, Func<OperationRecord, bool>? isOwnerRunning = null)
     {
-        var operations = new List<RecoveredOperation>();
+        isOwnerRunning ??= OperationOwner.IsRunning;
 
-        foreach (var record in journal.ReadAll())
+        var records = journal.ReadAll();
+
+        // A record whose process is alive is an operation in progress, not an interrupted one - the
+        // app and the command line a Steam plugin starts both write here, and each recovers when it
+        // starts. Left alone, and so is every dll it names: an older record must not reach into files
+        // a live operation is part way through renaming.
+        var running = records.Where(isOwnerRunning).ToList();
+        var busy = new HashSet<string>(running.SelectMany(x => x.TargetPaths), StringComparer.OrdinalIgnoreCase);
+
+        var operations = new List<RecoveredOperation>();
+        var stale = 0;
+
+        // Newest first. When two interrupted operations touched one dll, the later one's copies sit on
+        // top of the earlier one's; undoing the earlier first would restore its state and then leave
+        // nothing to undo the later one with.
+        foreach (var record in records.Except(running).OrderByDescending(x => x.StartedAtUtc))
         {
             var warnings = new List<string>();
             var restored = new List<string>();
             var notRestored = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // The dlls this operation can still be shown to have been in the middle of: a staged or a
+            // previous copy is beside them. Everything else it did is gone, finished over by something
+            // later, and nothing is undone on its say-so.
+            var evidenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var targetPath in record.TargetPaths)
             {
+                if (busy.Contains(targetPath))
+                {
+                    continue;
+                }
+
                 var previousPath = targetPath + DllSwapExecutor.PreviousSuffix;
                 var stagedPath = targetPath + DllSwapExecutor.StagedSuffix;
+                var hasPrevious = fileSystem.FileExists(previousPath);
+                var hasStaged = fileSystem.FileExists(stagedPath);
 
-                if (fileSystem.FileExists(previousPath))
+                if (hasPrevious || hasStaged)
+                {
+                    evidenced.Add(targetPath);
+                }
+
+                if (hasPrevious)
                 {
                     try
                     {
@@ -82,7 +126,10 @@ public static class SwapRecovery
                     }
                 }
 
-                TryDelete(fileSystem, stagedPath, warnings);
+                if (hasStaged)
+                {
+                    TryDelete(fileSystem, stagedPath, warnings);
+                }
             }
 
             foreach (var backupPath in record.CreatedBackupPaths)
@@ -90,6 +137,14 @@ public static class SwapRecovery
                 var targetPath = backupPath.EndsWith(DllSwapExecutor.BackupSuffix, StringComparison.OrdinalIgnoreCase)
                     ? backupPath.Substring(0, backupPath.Length - DllSwapExecutor.BackupSuffix.Length)
                     : backupPath;
+
+                // A backup this operation made goes only while the operation is still in evidence at
+                // its dll. Once something later has finished over that dll, the backup may be the
+                // original that later operation relies on - it found it there and made none of its own.
+                if (evidenced.Contains(targetPath) == false)
+                {
+                    continue;
+                }
 
                 if (notRestored.Contains(targetPath))
                 {
@@ -109,6 +164,12 @@ public static class SwapRecovery
                 warnings.Add($"Could not remove the journal entry for this operation: {err.Message}");
             }
 
+            if (evidenced.Count == 0 && warnings.Count == 0)
+            {
+                stale++;
+                continue;
+            }
+
             operations.Add(new RecoveredOperation()
             {
                 Record = record,
@@ -117,7 +178,12 @@ public static class SwapRecovery
             });
         }
 
-        return new RecoveryReport() { Operations = operations };
+        return new RecoveryReport()
+        {
+            Operations = operations,
+            StaleRemoved = stale,
+            StillRunning = running.Count,
+        };
     }
 
     static void TryDelete(IFileSystem fileSystem, string path, List<string> warnings)

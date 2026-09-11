@@ -384,6 +384,8 @@ public sealed class DllSwapExecutor
                 SourcePath = sourcePath,
                 TargetPaths = targetPaths.ToList(),
                 StartedAtUtc = DateTime.UtcNow,
+                ProcessId = OperationOwner.Current.ProcessId,
+                ProcessStartedAtUtc = OperationOwner.Current.StartedAtUtc,
             });
 
             entry._enabled = entry.TryWrite("Could not open the operation journal");

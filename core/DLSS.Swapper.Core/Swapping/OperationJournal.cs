@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -44,6 +45,99 @@ public sealed class OperationRecord
     public List<string> TargetPaths { get; set; } = new List<string>();
     public List<string> CreatedBackupPaths { get; set; } = new List<string>();
     public DateTime StartedAtUtc { get; set; }
+
+    /// <summary>
+    /// The process that wrote this record, so recovery can tell an operation still in progress from
+    /// one that was cut off. Zero on a record written before owners were kept: treated as ended.
+    /// </summary>
+    public int ProcessId { get; set; }
+
+    /// <summary>When that process started, so a process id Windows has since handed to something else is not mistaken for it.</summary>
+    public DateTime? ProcessStartedAtUtc { get; set; }
+}
+
+/// <summary>
+/// Whether the process that wrote a journal record is still running.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Two processes write the journal: the app, and the command line a Steam plugin starts. Each runs
+/// recovery when it starts, and a record whose owner is still alive is not an interrupted operation
+/// but one in progress - rolling it back would pull files out from under a swap that is part way
+/// through its renames. So a record names its process, and its start time, because Windows reuses
+/// process ids and a reused id belongs to some other program.
+/// </para>
+/// <para>
+/// When the answer cannot be had - a process this one is not allowed to inspect - it is taken to be
+/// running. Leaving a record for the next launch costs nothing; rolling back a live operation is the
+/// harm the check exists to prevent.
+/// </para>
+/// </remarks>
+public static class OperationOwner
+{
+    static readonly Lazy<(int ProcessId, DateTime? StartedAtUtc)> _current = new Lazy<(int, DateTime?)>(ReadCurrent);
+
+    /// <summary>This process, as a record written now would name it.</summary>
+    public static (int ProcessId, DateTime? StartedAtUtc) Current => _current.Value;
+
+    static (int, DateTime?) ReadCurrent()
+    {
+        using (var process = Process.GetCurrentProcess())
+        {
+            DateTime? started = null;
+            try
+            {
+                started = process.StartTime.ToUniversalTime();
+            }
+            catch (Exception)
+            {
+                // Recorded without a start time; a reader then trusts the id alone.
+            }
+
+            return (process.Id, started);
+        }
+    }
+
+    public static bool IsRunning(OperationRecord record)
+    {
+        if (record.ProcessId <= 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            using (var process = Process.GetProcessById(record.ProcessId))
+            {
+                if (process.HasExited)
+                {
+                    return false;
+                }
+
+                if (record.ProcessStartedAtUtc is null)
+                {
+                    return true;
+                }
+
+                var started = process.StartTime.ToUniversalTime();
+                return Math.Abs((started - record.ProcessStartedAtUtc.Value).TotalSeconds) < 1;
+            }
+        }
+        catch (ArgumentException)
+        {
+            // No process has that id now.
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            // It exited while being looked at.
+            return false;
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
 }
 
 /// <summary>

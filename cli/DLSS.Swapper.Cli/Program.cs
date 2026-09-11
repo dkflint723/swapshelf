@@ -88,6 +88,15 @@ static class Program
 
             await LoadEverythingAsync();
 
+            // Before anything that writes to a game folder or reads one to record it. A swap this
+            // command line or the app was cut off in the middle of is put back first, as the app does
+            // when it starts - somebody who only ever swaps from Steam may never open the app for it
+            // to happen there. An operation another process still has in progress is left to it.
+            if (command is "scan" or "swap" or "restore")
+            {
+                SwapExecutors.RecoverInterrupted();
+            }
+
             return command switch
             {
                 "list" => ListGames(args),
