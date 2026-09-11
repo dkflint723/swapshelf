@@ -208,7 +208,7 @@ public abstract partial class Game
         return new DllOperationResult(true, string.Empty, false);
     }
 
-    static string TrimBackupSuffix(string backupPath)
+    internal static string TrimBackupSuffix(string backupPath)
     {
         // Not Replace, that would also mangle a path containing the suffix somewhere in the middle.
         if (backupPath.EndsWith(DllSwapExecutor.BackupSuffix, StringComparison.OrdinalIgnoreCase))
@@ -400,6 +400,14 @@ public abstract partial class Game
         foreach (var createdBackup in swapResult.CreatedBackups)
         {
             var backedUpRecord = existingRecords.First(x => x.Path.Equals(createdBackup.TargetPath, StringComparison.OrdinalIgnoreCase));
+
+            // Its second copy in the library, as a backup made on first sight gets one. This is an
+            // original too - the file the game had before its first swap - and it used to go without.
+            if (DllTypes.ForAssetType(dllRecord.AssetType)?.GamesShipThisDll != false)
+            {
+                OriginalsStore.Mirror(ID, createdBackup.TargetPath, createdBackup.BackupPath, backedUpRecord.Version,
+                    string.IsNullOrWhiteSpace(backedUpRecord.Hash) ? null : backedUpRecord.Hash);
+            }
 
             newGameAssets.Add(new GameAsset()
             {

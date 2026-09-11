@@ -571,6 +571,11 @@ public partial class GameGridPageModel : ObservableObject
 
             // After the rescan, because the rescan is what writes the history this reads.
             await CheckForUndoneSwapsAsync();
+
+            // Every saved original the library holds no second copy of yet - for a library older
+            // than the mirror, nearly all of them. In the background, since the first run can copy
+            // gigabytes, and after the rescan so it sees what the rescan found.
+            OriginalsStore.CatchUpInBackground(GameManager.Instance.GetSynchronisedGamesListCopy());
         }
         finally
         {
