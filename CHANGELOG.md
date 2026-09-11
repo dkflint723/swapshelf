@@ -16,6 +16,33 @@ them apart without anyone having to remember a rule. It stays four plain numbers
 updater packs them into 16 bits each, so a suffix like `-fork.3` would silently stop update checks
 working.
 
+## v3.0.6.1 — recovery leaves a running swap alone
+
+A fix on top of 3.0.6.0. If you are coming from 3.0.5.0, the entry below this one is where the
+changes are.
+
+3.0.6.0 started writing each swap down while it runs, so one cut off part way through could be put
+back on the next launch. Two programs write that record — Swapshelf itself, and the command line
+[Hotswap](https://github.com/dkflint723/hotswap) starts from Steam — and recovery treated every
+record it found as interrupted. With both in use that went wrong three ways:
+
+- Swapshelf starting while Hotswap was part way through a swap could roll that swap back from under
+  it.
+- A record left by an interrupted swap could outlive later swaps of the same dll. Recovered after
+  one of them had finished, it deleted the saved original that swap had found and relied on — the
+  one copy of what the game shipped with. The library copy 3.0.6.0 keeps would usually bring it
+  back, but it should never have gone.
+- Someone who only swaps from Steam never had an interrupted swap put back at all.
+
+Each record now names the program that wrote it, and recovery leaves a record whose program is still
+running to that program. A saved original is only removed while the interrupted swap's own
+temporary copies are still beside the dll — without them, something later has finished over it —
+and interrupted swaps are undone newest first. The command line now recovers before it scans, swaps
+or restores, the way Swapshelf does when it starts.
+
+If you use Hotswap, update it to 1.3.1 as well. It shows why a swap or restore was refused, rather
+than "That did not work.", and can put back a dll that changed since it was swapped.
+
 ## v3.0.6.0 — every step of a swap, checked
 
 This release comes out of a review of everything Swapshelf does between downloading a dll and
