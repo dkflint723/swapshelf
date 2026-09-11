@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DLSS_Swapper.Swapping;
+using System.Text;
 
 namespace DLSS_Swapper.Tests;
 
@@ -45,6 +46,12 @@ internal sealed class FakeFileSystem : IFileSystem
     public IReadOnlyCollection<string> AllPaths => _files.Keys.ToList();
 
     public bool FileExists(string path) => _files.ContainsKey(path);
+
+    public Stream OpenRead(string path)
+    {
+        RequireExists(path);
+        return new MemoryStream(Encoding.UTF8.GetBytes(_files[path]), writable: false);
+    }
 
     public void Copy(string sourcePath, string destinationPath, bool overwrite)
     {

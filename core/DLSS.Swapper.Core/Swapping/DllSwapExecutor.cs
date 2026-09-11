@@ -96,25 +96,77 @@ public sealed class DllSwapExecutor
     }
 
     /// <summary>
-    /// Restores every target from its backup, consuming the backups on success.
+    /// Puts saved originals back by path alone, with no hash to check them against.
     /// </summary>
+    /// <remarks>
+    /// Kept for callers that only know the paths - the command line among them. Anything that has
+    /// the recorded hash should use the <see cref="ResetTarget"/> overload, which refuses a backup
+    /// that is no longer what was saved.
+    /// </remarks>
     public SwapResult Reset(IReadOnlyList<string> targetPaths)
     {
-        var targets = WithoutDuplicates(targetPaths);
+        return Reset(targetPaths.Select(x => new ResetTarget(x, null)).ToList());
+    }
 
-        if (targets.Count == 0)
+    /// <summary>
+    /// Puts saved originals back, refusing any that do not hash to what was recorded when saved.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every backup is checked - present, and matching its hash where one is known - before
+    /// anything at all is staged. A refusal therefore costs nothing: both the swapped dll and the
+    /// suspect backup stay exactly where they were, for someone to look at.
+    /// </para>
+    /// <para>
+    /// A target with no recorded hash is restored without the check. Backups saved by an older
+    /// build carry none, and they are still the only original there is.
+    /// </para>
+    /// </remarks>
+    public SwapResult Reset(IReadOnlyList<ResetTarget> targets)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var distinct = new List<ResetTarget>();
+        foreach (var target in targets)
+        {
+            if (seen.Add(target.TargetPath))
+            {
+                distinct.Add(target);
+            }
+        }
+
+        if (distinct.Count == 0)
         {
             return SwapResult.Fail(SwapFailure.NoTargets);
         }
 
         // Check every backup before touching anything, so a game with one missing backup does not
         // end up half restored.
-        foreach (var targetPath in targets)
+        foreach (var target in distinct)
         {
-            var backupPath = GetBackupPath(targetPath);
+            var backupPath = GetBackupPath(target.TargetPath);
             if (_fileSystem.FileExists(backupPath) == false)
             {
                 return SwapResult.Fail(SwapFailure.BackupMissing, backupPath);
+            }
+        }
+
+        // And that each one is still the file that was saved. This is the check that used to be
+        // missing: existence was taken as identity, and a backup corrupted or replaced since it was
+        // made went back into the game as though it were the original.
+        foreach (var target in distinct)
+        {
+            if (string.IsNullOrWhiteSpace(target.ExpectedBackupHash))
+            {
+                continue;
+            }
+
+            var backupPath = GetBackupPath(target.TargetPath);
+            using (var stream = _fileSystem.OpenRead(backupPath))
+            {
+                if (FileHashes.Md5Matches(stream, target.ExpectedBackupHash) == false)
+                {
+                    return SwapResult.Fail(SwapFailure.BackupTampered, backupPath);
+                }
             }
         }
 
@@ -122,14 +174,14 @@ public sealed class DllSwapExecutor
 
         try
         {
-            foreach (var targetPath in targets)
+            foreach (var target in distinct)
             {
-                transaction.Stage(targetPath, GetBackupPath(targetPath));
+                transaction.Stage(target.TargetPath, GetBackupPath(target.TargetPath));
             }
 
-            foreach (var targetPath in targets)
+            foreach (var target in distinct)
             {
-                transaction.Commit(targetPath);
+                transaction.Commit(target.TargetPath);
             }
         }
         catch (Exception err)
@@ -138,9 +190,9 @@ public sealed class DllSwapExecutor
         }
 
         // A backup only exists to get back to the original dll. Once we are there it has done its job.
-        foreach (var targetPath in targets)
+        foreach (var target in distinct)
         {
-            transaction.Discard(GetBackupPath(targetPath));
+            transaction.Discard(GetBackupPath(target.TargetPath));
         }
 
         return transaction.Complete();

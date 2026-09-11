@@ -17,6 +17,13 @@ public enum SwapFailure
     /// <summary>A reset was requested but a target had no backup to restore from.</summary>
     BackupMissing,
 
+    /// <summary>
+    /// A reset was requested but a backup no longer hashes to what was recorded when it was saved.
+    /// It was not restored: putting back a file that is not the original would leave the game
+    /// running an unknown dll while the row says it was returned to what it shipped with.
+    /// </summary>
+    BackupTampered,
+
     /// <summary>We could not write to the game directory. Usually fixed by running elevated.</summary>
     AccessDenied,
 

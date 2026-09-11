@@ -235,6 +235,7 @@ public class NewResourceStringTests
     [InlineData("DllManager_SignatureRemovedDll")]
     [InlineData("Game_GameRunning_CloseFirst")]
     [InlineData("GitHubUpdater_UpdateDidNotMatch")]
+    [InlineData("Game_Reset_BackupTampered")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

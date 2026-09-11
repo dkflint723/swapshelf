@@ -980,6 +980,10 @@
     <value>This game appears to be running. Close it and try again - nothing has been changed.</value>
     <comment>Shown before a swap or restore when a process is running from the game's install folder.</comment>
   </data>
+  <data name="Game_Reset_BackupTampered" xml:space="preserve">
+    <value>The saved original for this dll no longer matches what was recorded when it was saved, so it has not been restored and nothing has been changed. Verify the game's files to get a clean copy; Swapshelf will save that as the original on its next scan.</value>
+    <comment>Shown when a restore is refused because the .dlsss backup's hash differs from the one recorded at backup time.</comment>
+  </data>
   <data name="Game_Reset_FileInUse" xml:space="preserve">
     <value>Unable to reset to default. It appears to be in use by another program. Is your game currently running?</value>
   </data>

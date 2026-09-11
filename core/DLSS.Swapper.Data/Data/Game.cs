@@ -1318,7 +1318,12 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return (false, ResourceHelper.GetString("Game_GameRunning_CloseFirst"), false);
         }
 
-        var resetResult = new DllSwapExecutor().Reset(restorePairs.Select(x => x.Current.Path).ToList());
+        // Each backup goes back only if it still hashes to what was recorded when it was saved. A
+        // backup made before hashes were kept has none recorded and is restored without the check -
+        // it is still the only original there is.
+        var resetResult = new DllSwapExecutor().Reset(restorePairs
+            .Select(x => new ResetTarget(x.Current.Path, string.IsNullOrWhiteSpace(x.Backup.Hash) ? null : x.Backup.Hash))
+            .ToList());
 
         foreach (var warning in resetResult.Warnings)
         {
@@ -1453,6 +1458,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
             case SwapFailure.FileInUse:
                 return (false, ResourceHelper.GetString("Game_Reset_FileInUse"), false);
+
+            case SwapFailure.BackupTampered:
+                return (false, ResourceHelper.GetString("Game_Reset_BackupTampered"), false);
 
             default:
                 return (false, ResourceHelper.GetString("Game_Reset_RepairManually"), false);

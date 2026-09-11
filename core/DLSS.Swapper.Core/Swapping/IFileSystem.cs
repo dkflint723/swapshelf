@@ -1,4 +1,6 @@
-﻿namespace DLSS_Swapper.Swapping;
+﻿using System.IO;
+
+namespace DLSS_Swapper.Swapping;
 
 /// <summary>
 /// The subset of file operations the swap executor needs. Exists so the executor can be tested
@@ -8,6 +10,12 @@
 public interface IFileSystem
 {
     bool FileExists(string path);
+
+    /// <summary>
+    /// Opens a file for reading. The executor hashes a saved original through this before putting
+    /// it back, so a copy that is not what was saved is refused rather than restored.
+    /// </summary>
+    Stream OpenRead(string path);
 
     void Copy(string sourcePath, string destinationPath, bool overwrite);
 

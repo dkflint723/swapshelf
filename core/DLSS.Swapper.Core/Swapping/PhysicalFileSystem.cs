@@ -12,6 +12,10 @@ public sealed class PhysicalFileSystem : IFileSystem
 
     public bool FileExists(string path) => File.Exists(path);
 
+    // ReadWrite sharing, so a backup another process happens to have open for reading can still be
+    // checked. Nothing legitimately writes a .dlsss while it is being restored.
+    public Stream OpenRead(string path) => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
     public void Copy(string sourcePath, string destinationPath, bool overwrite) => File.Copy(sourcePath, destinationPath, overwrite);
 
     public void Move(string sourcePath, string destinationPath, bool overwrite) => File.Move(sourcePath, destinationPath, overwrite);
