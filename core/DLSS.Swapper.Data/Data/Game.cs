@@ -199,7 +199,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     /// <remarks>
     /// <para>
     /// An empty file whose timestamp is the only thing read, which lets a failure go through the
-    /// same seven day backoff a downloaded cover gets - see <see cref="ProcessGameAsync"/>.
+    /// same seven day backoff a downloaded cover gets - see <see cref="ProcessGame"/>.
     /// </para>
     /// <para>
     /// Without it a game whose cover cannot be fetched retries on every launch forever, because the
@@ -1144,7 +1144,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     /// <remarks>
     /// <para>
     /// The marker is what lets a failure wait. Its contents are never read - only the timestamp is,
-    /// by the backoff in <see cref="ProcessGameAsync"/> - so it is written empty and rewritten each
+    /// by the backoff in <see cref="ProcessGame"/> - so it is written empty and rewritten each
     /// time the attempt fails again, which is what moves the clock forward.
     /// </para>
     /// <para>
@@ -1214,7 +1214,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         else if (RecentlyFailedToFindACover())
         {
             // Already asked, recently, and there was nothing to find. This is the second of the two
-            // places that fetch a cover - ProcessGameAsync is the other - and until it checked, a
+            // places that fetch a cover - ProcessGame is the other - and until it checked, a
             // game with no cover made its requests twice per launch rather than once, because
             // suppressing one path still left this one asking.
         }
