@@ -269,6 +269,8 @@ public class NewResourceStringTests
     [InlineData("InterruptedSwaps_LinePutBackTemplate")]
     [InlineData("InterruptedSwaps_LineIncompleteTemplate")]
     [InlineData("InterruptedSwaps_UnknownGame")]
+    [InlineData("DiagnosticsPage_IncludeRealPaths")]
+    [InlineData("DiagnosticsPage_RedactedNote")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

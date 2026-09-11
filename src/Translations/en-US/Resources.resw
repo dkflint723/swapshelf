@@ -844,6 +844,13 @@
   <data name="Sidebar_VersionTemplate" xml:space="preserve">
     <value>v{0}</value>
   </data>
+  <data name="DiagnosticsPage_IncludeRealPaths" xml:space="preserve">
+    <value>Include real folder paths</value>
+    <comment>Checkbox on the diagnostics window. Off by default; on, the user's install and profile paths are shown instead of placeholders.</comment>
+  </data>
+  <data name="DiagnosticsPage_RedactedNote" xml:space="preserve">
+    <value>Folder paths that would show where your games and your Windows profile live have been replaced with placeholders such as &lt;Game: Title&gt; and &lt;UserProfile&gt;. Versions and hashes are shown as they are. This text is safe to paste into a public bug report.</value>
+  </data>
   <data name="DiagnosticsPage_ClickToCopyDetails" xml:space="preserve">
     <value>Click to copy below details</value>
   </data>
