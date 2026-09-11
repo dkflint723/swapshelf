@@ -40,7 +40,7 @@ public class GameIdentityTests
 
         var games = new List<Game>() { steam };
 
-        Assert.False(games.Contains(ubisoft));
+        Assert.DoesNotContain(ubisoft, games);
     }
 
     [Fact]

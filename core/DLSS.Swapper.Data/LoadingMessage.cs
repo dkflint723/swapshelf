@@ -24,5 +24,10 @@ internal static class LoadingMessage
     internal static Func<string?>? Read { get; set; }
 
     /// <summary>Set by the app while it starts. Null everywhere else.</summary>
-    internal static Action<string?>? Write { get; set; }
+    /// <remarks>
+    /// Takes a line of text, never null: the loading screen's text is not nullable, and the one
+    /// caller already drops a null before it gets here. Typed as nullable, the app's setter was a
+    /// warning on every build about an assignment that could not happen.
+    /// </remarks>
+    internal static Action<string>? Write { get; set; }
 }

@@ -1,3 +1,9 @@
 SHGetFileInfoW
 DestroyIcon
 ExtractIconExW
+CoCreateInstance
+FileOpenDialog
+IFileOpenDialog
+FileSaveDialog
+IFileSaveDialog
+SHCreateItemFromParsingName

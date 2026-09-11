@@ -74,6 +74,17 @@
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
+  <!--
+    Warnings are errors. The build carried fourteen for months, all from one cause, and a warning
+    that is always there is one nobody reads. NuGet's audit codes stay warnings: an advisory
+    published tomorrow, or a restore with no network, must not stop a compile. The "Check for
+    vulnerable packages" step in CI is where that fails, and it says why.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\DLSS Swapper.csproj" />
   </ItemGroup>
