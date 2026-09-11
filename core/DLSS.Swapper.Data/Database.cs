@@ -189,6 +189,8 @@ internal class Database
                 "swapped",
                 // streamline: whether sl.interposer.dll was seen in the game's folder.
                 "streamline",
+                // sha256: the second digest of a game asset, beside its MD5.
+                "sha256",
 
                 // game_dll_pin and its reason / pinned_at columns.
                 "dll",

@@ -371,6 +371,9 @@ internal class DLLManager
         // Before the merge, so the master lists and every surface built from them carry the notes.
         ApplyRecommendations();
 
+        // And the SHA-256s this machine has learned, which the manifest itself never carries.
+        ApplyLocalDigests();
+
         UiThread.Run(() =>
         {
             // Merge each of the manifests into the master DLL record list
@@ -440,6 +443,16 @@ internal class DLLManager
 
             StampRecommendation(Manifest?.GetRecords(assetType), recommendation);
             StampRecommendation(ImportedManifest?.GetRecords(assetType), recommendation);
+        }
+    }
+
+    /// <summary>Puts remembered SHA-256s back onto the manifest entries, which carry none of their own.</summary>
+    void ApplyLocalDigests()
+    {
+        foreach (var dllTypeDefinition in DllTypes.All)
+        {
+            LocalDigestStore.Apply(Manifest?.GetRecords(dllTypeDefinition.AssetType));
+            LocalDigestStore.Apply(ImportedManifest?.GetRecords(dllTypeDefinition.AssetType));
         }
     }
 
@@ -1169,7 +1182,10 @@ internal class DLLManager
             return DLLImportResult.FromFail(zippedDllFullName ?? filePath, message);
         }
 
-        var dllHash = versionInfo.GetMD5Hash();
+        // Both digests from one read. The MD5 is what the record is found by; the SHA-256 goes on the
+        // imported record, and on a manifest record being imported as its download.
+        var digests = versionInfo.GetDigests();
+        var dllHash = digests.Md5;
 
         var importingAsDownloadedDll = false;
 
@@ -1193,6 +1209,7 @@ internal class DLLManager
                 Version = versionInfo.GetFormattedFileVersion(),
                 VersionNumber = versionInfo.GetFileVersionNumber(),
                 MD5Hash = dllHash,
+                Sha256Hash = digests.Sha256,
                 FileSize = fileInfo.Length,
                 ZipFileSize = 0,
                 ZipMD5Hash = string.Empty,
@@ -1200,6 +1217,8 @@ internal class DLLManager
                 AssetType = gameAssetType.Value,
             };
 
+
+            dllRecord.RememberSha256(digests.Sha256);
 
             // TODO: Get extra data from DLL if possible
 

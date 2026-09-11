@@ -634,6 +634,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     if (oldGameAsset is not null && gameAsset.MatchesCachedFile(oldGameAsset))
                     {
                         gameAsset.Hash = oldGameAsset.Hash;
+                        gameAsset.Sha256 = oldGameAsset.Sha256;
                     }
                     else
                     {
@@ -1081,6 +1082,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             if (cachedBackup is not null && gameAssetBackup.MatchesCachedFile(cachedBackup))
             {
                 gameAssetBackup.Hash = cachedBackup.Hash;
+                gameAssetBackup.Sha256 = cachedBackup.Sha256;
             }
             else
             {
@@ -1488,6 +1490,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Path = currentRecord.Path,
                 Version = backupRecord.Version,
                 Hash = backupRecord.Hash,
+                Sha256 = backupRecord.Sha256,
             };
             newGameAssets.Add(newGameAsset);
 
@@ -1657,11 +1660,17 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         var versionInfo = FileVersionInfo.GetVersionInfo(dllRecord.LocalRecord.ExpectedPath);
         var dllVersion = versionInfo.GetFormattedFileVersion();
-        var md5Hash = versionInfo.GetMD5Hash();
-        if (dllRecord.MD5Hash != md5Hash)
+
+        // Both digests from one read. MD5 is the identity the manifest keys every record by and has
+        // to match; SHA-256 is compared when the record carries one and learned when it does not, so
+        // from the first swap on there is a digest a forger cannot cheaply collide to check against.
+        var digests = versionInfo.GetDigests();
+        if (FileHashes.HexEquals(dllRecord.MD5Hash, digests.Md5) == false || dllRecord.MatchesSha256(digests.Sha256) == false)
         {
             return new DllOperationResult(false, ResourceHelper.GetString("Game_Swap_InvalidHash"), false);
         }
+
+        dllRecord.RememberSha256(digests.Sha256);
 
 
         // Validate new DLL: valid, and from the vendor that makes this kind of dll. Chaining to a
@@ -1732,6 +1741,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Path = createdBackup.BackupPath,
                 Version = backedUpRecord.Version,
                 Hash = backedUpRecord.Hash,
+                Sha256 = backedUpRecord.Sha256,
             });
         }
 
@@ -1748,6 +1758,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Version = dllVersion,
                 Hash = dllRecord.MD5Hash,
                 SwappedHash = dllRecord.MD5Hash,
+                Sha256 = digests.Sha256,
             });
 
             dllHistory.Add(new GameHistory()

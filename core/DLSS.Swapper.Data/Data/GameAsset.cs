@@ -153,6 +153,18 @@ public class GameAsset : IEquatable<GameAsset>
     public string? SwappedHash { get; set; } = null;
 
     /// <summary>
+    /// SHA-256 of the file, upper-case hex, or null for a row from before it was recorded.
+    /// </summary>
+    /// <remarks>
+    /// Read in the same pass as <see cref="Hash"/>. MD5 stays the identity every manifest entry and
+    /// history row is keyed by; this is the digest a forger cannot cheaply collide, kept so there is
+    /// something to compare against the day the manifest carries one, and so a file can be named
+    /// beyond doubt in a report.
+    /// </remarks>
+    [property: Column("sha256")]
+    public string? Sha256 { get; set; } = null;
+
+    /// <summary>
     /// Size on disk, stored so a rescan can tell an unchanged file from a changed one without
     /// reading it.
     /// </summary>
@@ -193,7 +205,9 @@ public class GameAsset : IEquatable<GameAsset>
             return;
         }
 
-        Hash = FileVersionInfo.GetVersionInfo(Path).GetMD5Hash();
+        var digests = FileVersionInfo.GetVersionInfo(Path).GetDigests();
+        Hash = digests.Md5;
+        Sha256 = string.IsNullOrEmpty(digests.Sha256) ? null : digests.Sha256;
     }
 
     /// <summary>
@@ -207,7 +221,9 @@ public class GameAsset : IEquatable<GameAsset>
     /// </remarks>
     public bool MatchesCachedFile(GameAsset cachedGameAsset)
     {
+        // A row from before SHA-256 was kept is re-read once, so every row ends up carrying both.
         return string.IsNullOrEmpty(cachedGameAsset.Hash) == false
+            && string.IsNullOrEmpty(cachedGameAsset.Sha256) == false
             && cachedGameAsset.Size > 0
             && Size == cachedGameAsset.Size
             && Version == cachedGameAsset.Version;

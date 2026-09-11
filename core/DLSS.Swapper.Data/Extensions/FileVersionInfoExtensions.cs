@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
+using DLSS_Swapper.Swapping;
 
 namespace DLSS_Swapper.Extensions;
 
@@ -22,6 +23,24 @@ internal static class FileVersionInfoExtensions
         }
 
         return string.Empty;
+    }
+
+    /// <summary>Both digests of the file, from one read. Empty strings when it could not be read.</summary>
+    internal static FileDigests GetDigests(this FileVersionInfo fileVersionInfo)
+    {
+        try
+        {
+            using (var fileStream = File.OpenRead(fileVersionInfo.FileName))
+            {
+                return FileHashes.Compute(fileStream);
+            }
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err, $"{fileVersionInfo.FileName}");
+        }
+
+        return new FileDigests(string.Empty, string.Empty);
     }
 
     internal static string GetFormattedFileVersion(this FileVersionInfo fileVersionInfo)

@@ -27,8 +27,19 @@ public class GameAssetTests
     {
         var onDisk = Asset("310.7.0.0", 1024, string.Empty);
         var cached = Asset("310.7.0.0", 1024, "ABC");
+        cached.Sha256 = "DEF";
 
         Assert.True(onDisk.MatchesCachedFile(cached));
+    }
+
+    [Fact]
+    public void ACachedRowWithoutASha256IsReadAgain()
+    {
+        // Rows from before the second digest was kept are re-read once, so every row ends up with both.
+        var onDisk = Asset("310.7.0.0", 1024, string.Empty);
+        var cached = Asset("310.7.0.0", 1024, "ABC");
+
+        Assert.False(onDisk.MatchesCachedFile(cached));
     }
 
     [Fact]

@@ -11,6 +11,7 @@ using DLSS_Swapper.Dlls;
 using DLSS_Swapper.Extensions;
 using DLSS_Swapper.Helpers;
 using DLSS_Swapper.Helpers.FSR31;
+using DLSS_Swapper.Swapping;
 
 namespace DLSS_Swapper.Data;
 
@@ -43,6 +44,32 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
     /// </summary>
     [JsonPropertyName("zip_md5_hash")]
     public string ZipMD5Hash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// SHA-256 of the dll, upper-case hex. Empty for a manifest entry, which carries none; filled in
+    /// on import, and on the first download or swap of a manifest entry - when it is also remembered
+    /// locally, so it is still here after the next manifest load.
+    /// </summary>
+    [JsonPropertyName("sha256_hash")]
+    public string Sha256Hash { get; set; } = string.Empty;
+
+    /// <summary>True when this record has no SHA-256 to compare, or <paramref name="actualSha256"/> is it.</summary>
+    internal bool MatchesSha256(string actualSha256)
+    {
+        return string.IsNullOrEmpty(Sha256Hash) || FileHashes.HexEquals(Sha256Hash, actualSha256);
+    }
+
+    /// <summary>Records the SHA-256 of this record's file the first time it is seen, here and in the local store.</summary>
+    internal void RememberSha256(string actualSha256)
+    {
+        if (string.IsNullOrEmpty(Sha256Hash) == false || string.IsNullOrEmpty(actualSha256))
+        {
+            return;
+        }
+
+        Sha256Hash = actualSha256;
+        LocalDigestStore.Remember(MD5Hash, actualSha256);
+    }
 
     [JsonPropertyName("download_url")]
     public string DownloadUrl { get; set; } = string.Empty;
@@ -376,6 +403,10 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
                 using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Read, true))
                 {
                     DLLManager.HandleExtractFromZip(zipArchive, this);
+
+                    // The zip matched the manifest; now the dll inside it has to. Extraction used
+                    // to be taken on trust, so a wrong dll in a right zip was never noticed here.
+                    VerifyExtractedDll();
                 }
             }
 
@@ -441,6 +472,41 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Checks the dll just extracted against this record - MD5 always, SHA-256 when the record has
+    /// one - and learns the SHA-256 when it does not. A file that does not match is deleted and
+    /// the download reported as invalid, so nothing unverified stays in the library.
+    /// </summary>
+    void VerifyExtractedDll()
+    {
+        if (LocalRecord is null)
+        {
+            return;
+        }
+
+        FileDigests digests;
+        using (var stream = new FileStream(LocalRecord.ExpectedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            digests = FileHashes.Compute(stream);
+        }
+
+        if (FileHashes.HexEquals(MD5Hash, digests.Md5) == false || MatchesSha256(digests.Sha256) == false)
+        {
+            try
+            {
+                File.Delete(LocalRecord.ExpectedPath);
+            }
+            catch (Exception err)
+            {
+                Logger.Warning($"Could not remove the invalid download at {LocalRecord.ExpectedPath}: {err.Message}");
+            }
+
+            throw new Exception("Downloaded file was invalid.");
+        }
+
+        RememberSha256(digests.Sha256);
+    }
+
     internal string GetRecordSimpleType()
     {
         return DllTypes.ForAssetType(AssetType)?.ManifestKey ?? string.Empty;
@@ -454,6 +520,8 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
         AdditionalLabel = newDllRecord.AdditionalLabel;
         MD5Hash = newDllRecord.MD5Hash;
         ZipMD5Hash = newDllRecord.ZipMD5Hash;
+        // A manifest reload carries no SHA-256; one already learned is not forgotten for it.
+        Sha256Hash = string.IsNullOrEmpty(newDllRecord.Sha256Hash) ? Sha256Hash : newDllRecord.Sha256Hash;
         DownloadUrl = newDllRecord.DownloadUrl;
         FileDescription = newDllRecord.FileDescription;
         SignedDateTime = newDllRecord.SignedDateTime;

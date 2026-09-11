@@ -62,10 +62,10 @@ internal static class OriginalsStore
             var (copyPath, sidecarPath) = LocationFor(gameId, sourcePath);
             Storage.CreateDirectoryForFileIfNotExists(copyPath);
 
-            string hash;
+            FileDigests digests;
             using (var stream = new FileStream(savedCopyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                hash = FileHashes.Md5Hex(stream);
+                digests = FileHashes.Compute(stream);
             }
 
             // Written beside, then moved over, so a half-written mirror never looks like a whole one.
@@ -79,7 +79,8 @@ internal static class OriginalsStore
                 SourcePath = sourcePath,
                 FileName = Path.GetFileName(sourcePath),
                 Version = version,
-                Md5 = hash,
+                Md5 = digests.Md5,
+                Sha256 = digests.Sha256,
                 SavedAt = DateTime.UtcNow,
             };
             File.WriteAllText(sidecarPath, JsonSerializer.Serialize(sidecar, SidecarJsonContext.Default.SidecarRecord));
@@ -122,7 +123,12 @@ internal static class OriginalsStore
 
             using (var stream = new FileStream(copyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                if (FileHashes.Md5Matches(stream, sidecar.Md5) == false)
+                // Both digests when the record has both; a record from before SHA-256 was kept is
+                // checked by its MD5 alone.
+                var digests = FileHashes.Compute(stream);
+                var sha256Mismatch = string.IsNullOrWhiteSpace(sidecar.Sha256) == false
+                    && FileHashes.HexEquals(digests.Sha256, sidecar.Sha256) == false;
+                if (FileHashes.HexEquals(digests.Md5, sidecar.Md5) == false || sha256Mismatch)
                 {
                     Logger.Error($"The mirror for {sourcePath} no longer matches its own record ({sidecar.Md5}); not restoring from it.");
                     return false;
@@ -183,6 +189,7 @@ internal static class OriginalsStore
         public string FileName { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
         public string Md5 { get; set; } = string.Empty;
+        public string? Sha256 { get; set; }
         public DateTime SavedAt { get; set; }
     }
 }
