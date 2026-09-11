@@ -186,9 +186,10 @@ already finished.
 If you install this over a running copy, it will now tell you to close it and stop. That is the
 point, though it does mean this particular update has to be installed the way it is asking you to.
 
-**Correction, from 3.0.6.2:** the diagnosis above was wrong. Those releases did not leave Add or remove
-programs on 3.0.2.0. The checks that said so read a private overlay of the registry in the environment
-they were made from, and the real entry was right. The refusal stays anyway.
+**Correction, from 3.0.6.2:** the explanation above does not hold. The checks that said 3.0.3.0 and
+3.0.4.0 left Add or remove programs on 3.0.2.0 read a private overlay of the registry in the environment
+they were made from, not the real entry, so they showed nothing about those installs. The refusal stays
+anyway.
 
 ## v3.0.4.0 — the covers come back
 
