@@ -61,8 +61,8 @@ internal static class AppHttpClient
     /// <summary>Builds a client configured the way this app talks to the internet.</summary>
     internal static HttpClient Create()
     {
-        var version = Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
-        var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        // The running program's version, not this library's 1.0.0 - see AppVersion.
+        var versionString = AppVersion.Display;
 
         var httpClientHandler = new HttpClientHandler()
         {

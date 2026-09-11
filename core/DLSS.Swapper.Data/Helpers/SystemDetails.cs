@@ -17,15 +17,13 @@ internal class SystemDetails
     /// </summary>
     /// <remarks>
     /// The app used to be asked, which made a diagnostics dump impossible to produce from anything
-    /// that is not the app - the command line included. The number is stamped on the assembly
-    /// either way, and both are built from the same version in the csproj.
+    /// that is not the app - the command line included. Then this asked its own assembly, which is
+    /// DLSS.Swapper.Data and versioned 1.0.0, so every dump said "Swapshelf: 1.0.0.0". The program
+    /// that was started - app or command line - carries the release's number; see AppVersion.
     /// </remarks>
     static string VersionString()
     {
-        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        return version is null
-            ? "unknown"
-            : $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        return AppVersion.Display;
     }
 
     public string GetSystemData()

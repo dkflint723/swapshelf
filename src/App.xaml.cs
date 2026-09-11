@@ -277,6 +277,14 @@ public sealed partial class App : Application, IUiDispatcher
                     return;
                 }
 
+                // Every launch, not weekly like the size below: a version that is wrong is wrong now.
+                // The installer's own write of it has failed to stick more than once; see UninstallEntry.
+                var replaced = UninstallEntry.KeepVersionCurrent(dlssSwapperRegistryKey, AppContext.BaseDirectory, AppVersion.Display);
+                if (replaced is not null)
+                {
+                    Logger.Warning($"Add or remove programs named version {replaced}; corrected it to {AppVersion.Display}.");
+                }
+
                 if (WasInstallSizeCalculatedRecently(dlssSwapperRegistryKey))
                 {
                     return;

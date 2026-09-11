@@ -317,6 +317,11 @@ Section
   # point the new shortcut at the program uninstaller
   CreateShortcut "$SMPROGRAMS\Swapshelf.lnk" "$INSTDIR\Swapshelf.exe"
 
+  ; What the entry held before this install touched it, for the record written below.
+  ClearErrors
+  ReadRegStr $4 SHCTX "${UNINST_KEY}" "DisplayVersion"
+  ClearErrors
+
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Swapshelf"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "3.0.6.1"
 
@@ -328,6 +333,27 @@ Section
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
   WriteRegStr SHCTX "${UNINST_KEY}" "InstallLocation" $INSTDIR
   WriteRegDWORD SHCTX "${UNINST_KEY}" "EstimatedSize" "$0"
+
+  ; The record of what those writes did. More than once the version above has not stuck - every file
+  ; new, Add or remove programs still naming the release before - including an install through the
+  ; updater with nothing running, and nothing left behind could say whether the write failed or was
+  ; undone afterwards. The error flag gathers any write above that failed; the values are read back
+  ; straight after. The app corrects the entry when it starts, so this is evidence, not the fix.
+  StrCpy $5 "none"
+  ${If} ${Errors}
+    StrCpy $5 "at least one write reported an error"
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $6 SHCTX "${UNINST_KEY}" "DisplayVersion"
+  ReadRegDWORD $7 SHCTX "${UNINST_KEY}" "EstimatedSize"
+  IntFmt $7 "0x%08X" $7
+  FileOpen $8 "$INSTDIR\install-registry.txt" w
+  FileWrite $8 "DisplayVersion before this install: $4$\r$\n"
+  FileWrite $8 "Errors from the writes: $5$\r$\n"
+  FileWrite $8 "DisplayVersion read back: $6$\r$\n"
+  FileWrite $8 "EstimatedSize written: $0, read back: $7$\r$\n"
+  FileClose $8
+  FileWrite $UninstLog "install-registry.txt$\r$\n"
 SectionEnd
 
 
