@@ -213,6 +213,48 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
     [JsonIgnore]
     public GameAssetType AssetType { get; set; } = GameAssetType.Unknown;
 
+    int _gamesUsingCount;
+
+    /// <summary>
+    /// How many games have this exact dll in place, as of the last time anything changed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Held rather than worked out on demand, because the row cannot ask the question itself. The
+    /// upscalers page used to bind straight to a function over this record, and an <c>x:Bind</c> to
+    /// a function re-evaluates when its ARGUMENTS change - the asset type, the hash, the version.
+    /// None of those change when a dll is swapped into a game. What changed was the games list,
+    /// which was never an argument, so the count was a snapshot taken the moment the row was first
+    /// drawn and then kept for the life of the page.
+    /// </para>
+    /// <para>
+    /// The effect looked like a bug in imported dlls, because those are the ones somebody imports
+    /// and then immediately swaps: the row is drawn while the file is in no games at all, reads
+    /// "Not used" correctly, and never says anything else. Downloaded dlls have the same problem
+    /// and hide it, because most of two hundred rows really are unused and "Not used" stays right
+    /// by accident.
+    /// </para>
+    /// <para>
+    /// A plain property with a notification moves the question to where the answer changes:
+    /// <see cref="DLLManager.RefreshGamesUsingCounts"/> sets it whenever the games do.
+    /// </para>
+    /// </remarks>
+    [JsonIgnore]
+    public int GamesUsingCount
+    {
+        get => _gamesUsingCount;
+        set
+        {
+            if (_gamesUsingCount == value)
+            {
+                return;
+            }
+
+            _gamesUsingCount = value;
+            NotifyPropertyChanged();
+        }
+    }
+
     [JsonIgnore]
     public DLLRecordModelTranslationProperties TranslationProperties { get; } = new DLLRecordModelTranslationProperties();
 

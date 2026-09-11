@@ -377,8 +377,17 @@ internal class DLLManager
                 MergeManifestsIntoMasterList(records, Manifest.GetRecords(assetType), ImportedManifest?.GetRecords(assetType));
             }
 
+            // Subscribed before anything is raised, so the refresh below is a starting value rather
+            // than the only one there will ever be.
+            TrackGamesForUsageCounts();
+
             // Now that we know what versions exist, work out which games are behind.
             GameManager.Instance.RefreshUpdateAvailable();
+
+            // And how many games each dll is actually in. RefreshUpdateAvailable above raises
+            // GamesChanged, but it coalesces onto a later frame, and a list that draws before that
+            // frame would show every row as unused until something else happened to change.
+            RefreshGamesUsingCounts();
         });
     }
 
@@ -778,6 +787,64 @@ internal class DLLManager
     /// <param name="manifestRecords"></param>
     /// <param name="importedRecords"></param>
     /// <returns>Returns true if importedRecords was changed and requires saving</returns>
+    bool _trackingGamesForUsageCounts;
+
+    /// <summary>
+    /// Listens for the games changing, so the usage counts do too.
+    /// </summary>
+    /// <remarks>
+    /// Subscribed here rather than in a constructor because this manager and the game manager each
+    /// reach for the other, and doing it while one of them is still being built is how that becomes
+    /// an ordering problem. By the time manifests have loaded both exist.
+    /// </remarks>
+    void TrackGamesForUsageCounts()
+    {
+        if (_trackingGamesForUsageCounts == true)
+        {
+            return;
+        }
+
+        _trackingGamesForUsageCounts = true;
+        GameManager.Instance.GamesChanged += (sender, args) => RefreshGamesUsingCounts();
+    }
+
+    /// <summary>
+    /// Works out, for every dll in the library, how many games have it in place.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One pass over the library for each pass over the games, rather than the walk the upscalers
+    /// page used to do per row as it drew - which was the same work repeated two hundred times and
+    /// still gave an answer that then went stale. See <see cref="DLLRecord.GamesUsingCount"/>.
+    /// </para>
+    /// <para>
+    /// Called on whatever thread raised the change. <see cref="GameManager.GamesChanged"/> arrives
+    /// on the UI thread, which is where these records are read from and written to.
+    /// </para>
+    /// </remarks>
+    internal void RefreshGamesUsingCounts()
+    {
+        var games = GameManager.Instance.GetSynchronisedGamesListCopy();
+
+        foreach (var records in _records.Values)
+        {
+            foreach (var record in records)
+            {
+                var count = 0;
+
+                foreach (var game in games)
+                {
+                    if (InstalledDllMatch.IsUsedBy(record.AssetType, record.MD5Hash, record.Version, game) == true)
+                    {
+                        ++count;
+                    }
+                }
+
+                record.GamesUsingCount = count;
+            }
+        }
+    }
+
     static void MergeManifestsIntoMasterList(ObservableCollection<DLLRecord> records, List<DLLRecord>? manifestRecords, List<DLLRecord>? importedManifestRecords)
     {
         if (manifestRecords is null)

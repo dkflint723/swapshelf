@@ -42,43 +42,33 @@ public static class DllUsage
     }
 
     /// <summary>
-    /// Whether any game has this dll in place, which is what decides whether the count is worth
-    /// offering to open.
-    /// </summary>
-    public static bool IsUsedByAny(GameAssetType assetType, string md5Hash, string version)
-    {
-        return CountGamesUsing(assetType, md5Hash, version, GameManager.Instance.GetSynchronisedGamesListCopy()) > 0;
-    }
-
-    /// <summary>
     /// The same answer, shaped for the row: what is shown when the file is in use, and what is
     /// shown when it is not.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Two functions rather than one plus a converter, because an <c>x:Bind</c> to a function
     /// ignores <c>Converter</c> entirely and fails the build rather than at runtime. Both sit here
     /// beside the rule they ask, so neither can drift from the count the row is showing.
+    /// </para>
+    /// <para>
+    /// These take the count rather than working it out, and that is the whole point. They used to
+    /// take the asset type, hash and version and go and count. An <c>x:Bind</c> to a function
+    /// re-evaluates when its arguments change, and none of those three change when a dll is swapped
+    /// into a game - so the row kept the number it was first drawn with. Taking
+    /// <see cref="DLLRecord.GamesUsingCount"/> puts an argument that does change in front of them.
+    /// Every one of these bindings needs <c>Mode=OneWay</c> to benefit; x:Bind is OneTime by
+    /// default, which is how the original went unnoticed.
+    /// </para>
     /// </remarks>
-    public static Visibility UsedVisibility(GameAssetType assetType, string md5Hash, string version)
+    public static Visibility UsedVisibility(int gamesUsingCount)
     {
-        return IsUsedByAny(assetType, md5Hash, version) ? Visibility.Visible : Visibility.Collapsed;
+        return gamesUsingCount > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public static Visibility NotUsedVisibility(GameAssetType assetType, string md5Hash, string version)
+    public static Visibility NotUsedVisibility(int gamesUsingCount)
     {
-        return IsUsedByAny(assetType, md5Hash, version) ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    /// <summary>
-    /// Reads as "14 games", "1 game", or "Not used".
-    /// </summary>
-    /// <remarks>
-    /// "Not used" rather than "0 games", because zero is the answer that matters and a bare zero
-    /// reads like a value that failed to load.
-    /// </remarks>
-    public static string DescribeUsage(GameAssetType assetType, string md5Hash, string version)
-    {
-        return DescribeCount(CountGamesUsing(assetType, md5Hash, version, GameManager.Instance.GetSynchronisedGamesListCopy()));
+        return gamesUsingCount > 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>

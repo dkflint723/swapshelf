@@ -321,12 +321,12 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             Style="{StaticResource TextBlockButtonStyle}"
-                            Visibility="{x:Bind data:DllUsage.UsedVisibility(AssetType, MD5Hash, Version)}"
+                            Visibility="{x:Bind data:DllUsage.UsedVisibility(GamesUsingCount), Mode=OneWay}"
                             Command="{Binding ElementName=thisPage, Path=ViewModel.ShowGamesUsingCommand}"
                             CommandParameter="{x:Bind}"
                             ToolTipService.ToolTip="{x:Bind TranslationProperties.ShowGamesUsingText, Mode=OneWay}">
                             <TextBlock
-                                Text="{x:Bind data:DllUsage.DescribeUsage(AssetType, MD5Hash, Version)}"
+                                Text="{x:Bind data:DllUsage.DescribeCount(GamesUsingCount), Mode=OneWay}"
                                 FontSize="12"
                                 TextWrapping="NoWrap"
                                 TextDecorations="Underline"
@@ -341,11 +341,11 @@
                         -->
                         <TextBlock
                             Grid.Column="2"
-                            Text="{x:Bind data:DllUsage.DescribeUsage(AssetType, MD5Hash, Version)}"
+                            Text="{x:Bind data:DllUsage.DescribeCount(GamesUsingCount), Mode=OneWay}"
                             FontSize="12"
                             VerticalAlignment="Center"
                             TextWrapping="NoWrap"
-                            Visibility="{x:Bind data:DllUsage.NotUsedVisibility(AssetType, MD5Hash, Version)}"
+                            Visibility="{x:Bind data:DllUsage.NotUsedVisibility(GamesUsingCount), Mode=OneWay}"
                             Foreground="{ThemeResource DsTextTertiaryBrush}" />
 
                         <!--
@@ -440,7 +440,7 @@
                                     -->
                                     <MenuFlyoutItem
                                         Text="{x:Bind TranslationProperties.ShowGamesUsingText, Mode=OneWay}"
-                                        Visibility="{x:Bind data:DllUsage.UsedVisibility(AssetType, MD5Hash, Version)}"
+                                        Visibility="{x:Bind data:DllUsage.UsedVisibility(GamesUsingCount), Mode=OneWay}"
                                         Command="{Binding ElementName=thisPage, Path=ViewModel.ShowGamesUsingCommand}"
                                         CommandParameter="{x:Bind}">
                                         <MenuFlyoutItem.Icon>
