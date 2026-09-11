@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
+using DLSS_Swapper.Pe;
 
 
 
@@ -354,9 +355,23 @@ internal static class WinTrust
                     }
                     else
                     {
-                        // The signature was not valid or there was an error 
-                        // opening the file.
-                        Logger.Error($"An unknown error occurred trying to verify the signature of the \"{fileName}\" file.");
+                        // WinVerifyTrust gives one code for "never signed" and "signature damaged".
+                        // The PE header can tell them apart, and for the case that prompted this -
+                        // a certificate table pointing past the end of the file - it is the whole
+                        // story: the file was altered after signing and the signature cut off.
+                        var table = PeSignatureTable.Inspect(fileName);
+                        switch (table)
+                        {
+                            case PeSignatureTableState.Truncated:
+                                Logger.Error($"The file \"{fileName}\" declares a signature that runs past the end of the file. The signature has been removed; this is not the file its publisher shipped.");
+                                break;
+                            case PeSignatureTableState.Present:
+                                Logger.Error($"The file \"{fileName}\" holds a signature that could not be verified (error 0x{dwLastError:X8}).");
+                                break;
+                            default:
+                                Logger.Error($"An unknown error occurred trying to verify the signature of the \"{fileName}\" file (error 0x{dwLastError:X8}, header {table}).");
+                                break;
+                        }
                     }
 
                     break;

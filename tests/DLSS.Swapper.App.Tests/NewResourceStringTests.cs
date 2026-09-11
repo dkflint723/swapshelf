@@ -232,6 +232,7 @@ public class NewResourceStringTests
     [InlineData("GamePage_Row_SavedOriginalTemplate")]
     [InlineData("Upscalers_ImportOnlyBodyTemplate")]
     [InlineData("Upscalers_ImportFromLocalFiles")]
+    [InlineData("DllManager_SignatureRemovedDll")]
     public void TheStringResolves(string resourceKey)
     {
         var value = ResourceHelper.GetString(resourceKey);

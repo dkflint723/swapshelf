@@ -13,6 +13,7 @@ using DLSS_Swapper.Dlls;
 using DLSS_Swapper.Extensions;
 using DLSS_Swapper.Helpers;
 using DLSS_Swapper.Versioning;
+using DLSS_Swapper.Pe;
 
 namespace DLSS_Swapper.Data;
 
@@ -1144,7 +1145,16 @@ internal class DLLManager
         // Don't do anything with untrusted dlls.
         if (Settings.Instance.AllowUntrusted == false && isTrusted == false)
         {
-            return DLLImportResult.FromFail(zippedDllFullName ?? filePath, ResourceHelper.GetString("DllManager_UntrustedDll"));
+            // "Not trusted by Windows" covers two very different files: one that was never signed,
+            // and one whose signature was stripped after the publisher signed it. The second is
+            // someone's modification, and telling the user only that Windows declined leaves them
+            // trying to import it again or verifying the game's files for a download problem that
+            // does not exist. The header says which it is.
+            var message = PeSignatureTable.Inspect(filePath) == PeSignatureTableState.Truncated
+                ? ResourceHelper.GetString("DllManager_SignatureRemovedDll")
+                : ResourceHelper.GetString("DllManager_UntrustedDll");
+
+            return DLLImportResult.FromFail(zippedDllFullName ?? filePath, message);
         }
 
         var dllHash = versionInfo.GetMD5Hash();
@@ -1277,16 +1287,26 @@ internal class DLLManager
         }
 
         var dllName = DLLManager.DllNameForGameAssetType(dllRecord.AssetType);
-        var entry = zipArchive.Entries.Single(x => x.Name.Equals(dllName, StringComparison.OrdinalIgnoreCase));
-        if (entry is null)
+
+        // Single() throws its own InvalidOperationException for both zero and several matches, so
+        // the null check that used to follow it could never run and the message it guarded was
+        // never shown. Counted instead, so each wrong shape of archive says what is wrong with it.
+        var matches = zipArchive.Entries
+            .Where(x => x.Name.Equals(dllName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (matches.Count == 0)
         {
-            throw new Exception("Could not find dll in zip.");
+            throw new Exception($"Could not find {dllName} in the downloaded archive.");
         }
-        else
+
+        if (matches.Count > 1)
         {
-            Storage.CreateDirectoryForFileIfNotExists(dllRecord.LocalRecord.ExpectedPath);
-            entry.ExtractToFile(dllRecord.LocalRecord.ExpectedPath, true);
+            throw new Exception($"The downloaded archive holds {matches.Count} files named {dllName}, so it is not the archive the manifest describes.");
         }
+
+        Storage.CreateDirectoryForFileIfNotExists(dllRecord.LocalRecord.ExpectedPath);
+        matches[0].ExtractToFile(dllRecord.LocalRecord.ExpectedPath, true);
     }
 
 }

@@ -865,6 +865,10 @@
   <data name="DllManager_UntrustedDll" xml:space="preserve">
     <value>DLL is not trusted by Windows.</value>
   </data>
+  <data name="DllManager_SignatureRemovedDll" xml:space="preserve">
+    <value>This file's digital signature has been removed, so it is not the file its publisher shipped. Swapshelf will not import a modified dll.</value>
+    <comment>Shown when an imported dll's PE header points at a signature that runs past the end of the file - it was signed once and then altered.</comment>
+  </data>
   <data name="DllRecord_CouldNotDownloadAssetTypeTemplate" xml:space="preserve">
     <value>Could not download {0} DLL, please try again later or check your logs to see why the download failed.</value>
     <comment>{0} will be the DLL type (eg. DLSS, FSR, XeSS)</comment>
