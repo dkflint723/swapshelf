@@ -16,6 +16,28 @@ them apart without anyone having to remember a rule. It stays four plain numbers
 updater packs them into 16 bits each, so a suffix like `-fork.3` would silently stop update checks
 working.
 
+## v3.0.7.1 — DLSS NR is not saved as an original after all
+
+This undoes the DLSS NR change in 3.0.7.0. The Hebrew translation and the limit on scanning stay.
+
+3.0.7.0 started saving the NR dll in a game folder as that game's original, because NBA 2K27 ships one.
+On the library it was released to, no game shipped NR at all. Every copy had been put there by a mod:
+genuine NVIDIA files copied in by hand, files patched after NVIDIA signed them, and small unsigned stubs
+of about 230 KB that are not NR at all. Saving those as originals records the mod as what the game came
+with, about 160 MB a copy, for Restore to put back. Nothing in the file shows whether a game shipped
+it. A genuine signature is just as true of a copy someone added.
+
+So NR is treated as shipped by no game again. Its original is not saved automatically, it gets no
+library copy, and a game with NR is never listed as missing a saved original. If you own a game that
+does ship it, verifying the game through its store gets the shipped file back.
+
+If 3.0.7.0 ran on your machine, it may already have copied an NR "original" into the library's
+`originals` folder. This release does not delete anything. No new ones are made, and the existing ones
+can be removed by hand.
+
+Also corrected: 3.0.7.0's notes gave NBA 2K27 as the reason, as if most copies in game folders were
+shipped ones. On the evidence here, most are modded in.
+
 ## v3.0.7.0 — DLSS NR's original is kept, and Hebrew
 
 DLSS NR (`nvngx_dlssnr.dll`, the DLSS 5 neural rendering dll) used to be treated as a dll no game

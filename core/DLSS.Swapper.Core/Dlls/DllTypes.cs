@@ -58,16 +58,21 @@ public static class DllTypes
             Vendor = DllVendor.Nvidia,
             DisplayNameResourceKey = "General_Name_DLSS_NR",
 
-            // Games ship it now - NBA 2K27 carries 310.8.0.0 in its install folder - so it takes the
-            // default and its original is saved before a swap like any other. It used to be marked
-            // as shipped by nobody, from when the only copies around had leaked, and a swap in a game
-            // that does ship it would have overwritten the developer's file with no copy kept.
+            // Treated as shipped by no game, because in practice the copies in game folders were put
+            // there by mods. NBA 2K27 does ship 310.8.0.0, and 3.0.7.0 briefly treated NR as shipped
+            // on that strength. On a real library every copy turned out to be modded in - genuine
+            // NVIDIA files copied in by hand, patched ones, and ~230 KB unsigned stubs - so saving
+            // "originals" recorded each mod as what the game came with, at ~160 MB a copy, for Restore
+            // to put back. Nothing in the file says whether a game shipped it: a genuine signature
+            // is just as true of one copied in. Somebody who owns a game that does ship it can get
+            // the file back by verifying the game through its store.
+            GamesShipThisDll = false,
 
-            // Not in any upstream manifest yet. Released in a game but not as a download: NVIDIA's
-            // DLSS SDK (310.9.1) and Streamline SDK (2.14.1) packages carry no nvngx_dlssnr.dll,
-            // although the Streamline changelog announces an sl.dlss_nr plugin. So its versions
-            // arrive only by importing the file. The manifest key is still named, so when the builder
-            // publishes one it lands here rather than in an unrecognised bucket nothing reads.
+            // Not in any upstream manifest: NVIDIA has not published it as a download - the DLSS SDK
+            // (310.9.1) and Streamline SDK (2.14.1) packages carry no nvngx_dlssnr.dll - so there is
+            // nothing to download and its versions arrive only by importing the file. The manifest
+            // key is still named, so if the builder ever does publish one it lands here rather than
+            // in an unrecognised bucket nothing reads.
             ExpectedInUpstreamManifest = false,
         },
         new DllTypeDefinition()

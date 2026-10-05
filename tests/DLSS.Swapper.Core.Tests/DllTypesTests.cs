@@ -64,19 +64,12 @@ public class DllTypesTests
     }
 
     /// <summary>
-    /// The two exemptions are narrow, and the backup one is the narrower.
+    /// The two exemptions are narrow, and both belong to the same kind of type: one nobody ships.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// A dll no game ships cannot be one upstream publishes a download for, so every type exempt from
-    /// backups is also exempt from the manifest check. The reverse does not hold: a dll can ship in a
-    /// game before anyone publishes it as a download, which is where DLSS NR is now.
-    /// </para>
-    /// <para>
-    /// Nothing is exempt from backups today. DLSS NR was, until it shipped in NBA 2K27, and leaving it
-    /// exempt would have let a swap overwrite a developer's file with no copy kept. A type that gains
-    /// the flag again has to be added here on purpose.
-    /// </para>
+    /// A released upscaler must never carry either flag. Games ship it, so the copy in a game
+    /// folder is a real original worth saving, and upstream publishes it, so the manifest check
+    /// applies. Both flags off for such a type would silently drop it out of two safeguards.
     /// </remarks>
     [Fact]
     public void OnlyDllsNoGameShipsAreExemptFromBackupsAndTheManifest()
@@ -84,23 +77,11 @@ public class DllTypesTests
         var notShipped = DllTypes.All.Where(x => x.GamesShipThisDll == false).ToList();
         var notInManifest = DllTypes.All.Where(x => x.ExpectedInUpstreamManifest == false).ToList();
 
-        Assert.Empty(notShipped);
-        Assert.All(notShipped, x => Assert.Contains(x, notInManifest));
+        // A dll games do not ship cannot be one upstream publishes a download for, and the reverse
+        // would be stranger still: a released dll the manifest is not expected to carry.
+        Assert.Equal(notShipped, notInManifest);
 
-        Assert.All(notInManifest, x => Assert.Equal(GameAssetType.DLSS_NR, x.AssetType));
-    }
-
-    /// <summary>
-    /// DLSS NR's original is protected like any other, now that a game ships it.
-    /// </summary>
-    [Fact]
-    public void DlssNr_IsTreatedAsShippedByGames()
-    {
-        var definition = DllTypes.ForAssetType(GameAssetType.DLSS_NR);
-
-        Assert.NotNull(definition);
-        Assert.True(definition.GamesShipThisDll);
-        Assert.False(definition.ExpectedInUpstreamManifest);
+        Assert.All(notShipped, x => Assert.Equal(GameAssetType.DLSS_NR, x.AssetType));
     }
 
     [Fact]
