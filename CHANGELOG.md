@@ -16,6 +16,31 @@ them apart without anyone having to remember a rule. It stays four plain numbers
 updater packs them into 16 bits each, so a suffix like `-fork.3` would silently stop update checks
 working.
 
+## v3.0.7.0 — DLSS NR's original is kept, and Hebrew
+
+DLSS NR (`nvngx_dlssnr.dll`, the DLSS 5 neural rendering dll) used to be treated as a dll no game
+ships, because every copy in a game folder had been put there by hand. A dll no game ships has no
+original to save, so Swapshelf saved none. NBA 2K27 now ships 310.8.0.0 itself, and swapping it there
+would have overwritten the developer's file with no copy kept, while the game showed as fully protected.
+NR is now handled like every other dll: its original is saved before the first swap, it gets the second
+copy in the library, and a game with no saved copy shows under "Missing a saved original". If a game
+had NR swapped before this release and now shows as missing a saved original, verifying its files
+through its store puts the shipped dll back, and **Save a copy** on the game then keeps it.
+
+There is still nothing to download for NR, so it still lists only versions you import. NVIDIA has not
+published it as a download. Neither the DLSS SDK (310.9.1) nor the Streamline SDK (2.14.1) includes the
+dll, although the Streamline changelog announces an NR plugin. Upstream's download list has no NR
+entry yet. When it does, the versions appear here without an update.
+
+Also from upstream [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper):
+
+- A Hebrew (עברית) translation, from its #950. It is laid out right to left, as Arabic and Farsi already
+  are.
+- At most four games are scanned at once, from its #933. A large library used to scan hundreds of
+  install folders at the same moment on launch.
+
+The rest of upstream's latest changes were already here in another form.
+
 ## v3.0.6.2 — the version Add or remove programs shows
 
 This release set out to fix Add or remove programs showing an older version after an install, and the

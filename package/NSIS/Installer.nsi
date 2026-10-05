@@ -170,13 +170,13 @@ RequestExecutionLevel highest
 ; installer whose file properties and uninstall entry both said 1.2.5.1.
 Name "Swapshelf"
 !define MUI_ICON "..\..\src\Assets\icon.ico"
-!define MUI_VERSION "3.0.6.2"
+!define MUI_VERSION "3.0.7.0"
 !define MUI_PRODUCT "Swapshelf"
-VIProductVersion "3.0.6.2"
+VIProductVersion "3.0.7.0"
 VIAddVersionKey "ProductName" "Swapshelf"
-VIAddVersionKey "ProductVersion" "3.0.6.2"
+VIAddVersionKey "ProductVersion" "3.0.7.0"
 VIAddVersionKey "FileDescription" "Swapshelf installer"
-VIAddVersionKey "FileVersion" "3.0.6.2"
+VIAddVersionKey "FileVersion" "3.0.7.0"
 VIAddVersionKey "CompanyName" "dkflint723"
 VIAddVersionKey "LegalCopyright" "Fork of beeradmoore/dlss-swapper"
 
@@ -325,7 +325,7 @@ Section
   ClearErrors
 
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Swapshelf"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "3.0.6.2"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "3.0.7.0"
 
   ; Named for whoever built it, with what it was forked from, because this build is not the
   ; original author's work and Apps & features is where someone checks who to hold responsible.
