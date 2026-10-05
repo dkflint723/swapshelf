@@ -149,13 +149,16 @@ public class OriginalsCatchUpTests : IDisposable
     }
 
     [Fact]
-    public async Task ADllNoGameShipsHasNoOriginalToCopy()
+    public async Task ADlssNrOriginalIsCopiedLikeAnyOther()
     {
+        // Skipped while DLSS NR was treated as shipped by no game. NBA 2K27 ships it, so its saved
+        // original is as worth a second copy as any other.
         await using var database = await TemporaryDatabase.CreateAsync();
         OriginalsStore.FreeSpaceProbe = _ => null;
         var game = GameWithASavedOriginal(database, "catchup-nr", GameAssetType.DLSS_NR, "nvngx_dlssnr.dll");
 
-        Assert.Equal(0, OriginalsStore.CatchUp(new[] { game }));
+        Assert.Equal(1, OriginalsStore.CatchUp(new[] { game }));
+        Assert.True(OriginalsStore.HasMirror(game.ID, SourceOf(game)));
     }
 
     [Fact]

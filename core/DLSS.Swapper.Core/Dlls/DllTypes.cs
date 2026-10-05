@@ -58,14 +58,16 @@ public static class DllTypes
             Vendor = DllVendor.Nvidia,
             DisplayNameResourceKey = "General_Name_DLSS_NR",
 
-            // No game ships this dll, so a copy of it in a game folder was put there deliberately
-            // and there is no original behind it to save.
-            GamesShipThisDll = false,
+            // Games ship it now - NBA 2K27 carries 310.8.0.0 in its install folder - so it takes the
+            // default and its original is saved before a swap like any other. It used to be marked
+            // as shipped by nobody, from when the only copies around had leaked, and a swap in a game
+            // that does ship it would have overwritten the developer's file with no copy kept.
 
-            // Not in any upstream manifest: this dll has leaked rather than shipped, so there is
-            // nothing to download and its versions arrive only by importing the file. The manifest
-            // key is still named, so if the builder ever does publish one it lands here rather than
-            // in an unrecognised bucket nothing reads.
+            // Not in any upstream manifest yet. Released in a game but not as a download: NVIDIA's
+            // DLSS SDK (310.9.1) and Streamline SDK (2.14.1) packages carry no nvngx_dlssnr.dll,
+            // although the Streamline changelog announces an sl.dlss_nr plugin. So its versions
+            // arrive only by importing the file. The manifest key is still named, so when the builder
+            // publishes one it lands here rather than in an unrecognised bucket nothing reads.
             ExpectedInUpstreamManifest = false,
         },
         new DllTypeDefinition()

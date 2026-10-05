@@ -305,56 +305,46 @@ public class AutomaticBackupTests
     }
 
     /// <summary>
-    /// A dll no game ships gets no "original", because there is not one to save.
+    /// DLSS NR gets its original saved, now that games ship it.
     /// </summary>
     /// <remarks>
-    /// The backup rule reads the file sitting in a game folder as the version the developer
-    /// shipped, which is true of every released upscaler and false of a dll that only got there
-    /// because somebody installed it. Copying it anyway records the installed version as the
-    /// original, offers to "restore" a game to a file it never had, and spends a second copy of a
-    /// 158 MB dll per location doing it.
+    /// It used to be exempt, from when every copy in a game folder had been put there by hand.
+    /// NBA 2K27 ships 310.8.0.0 itself, so the file in its folder is the developer's and the only
+    /// copy of it - exactly what the backup rule exists for.
     /// </remarks>
     [Fact]
-    public async Task ADllNoGameShipsGetsNoFabricatedOriginal()
+    public async Task DlssNrGetsItsOriginalSaved()
     {
         await using var database = await TemporaryDatabase.CreateAsync();
         using var manifest = new ManifestScope();
 
         var dllPath = database.WriteFakeDll("nvngx_dlssnr.dll");
-        var game = new TestGame("backup_not_shipped");
+        var game = new TestGame("backup_nr");
         game.GameAssets.Add(Asset(game.ID, GameAssetType.DLSS_NR, dllPath));
 
         var saved = await game.SaveOriginalCopiesAsync();
 
-        Assert.Equal(0, saved);
-        Assert.False(File.Exists(dllPath + ".dlsss"));
+        Assert.Equal(1, saved);
+        Assert.Equal(File.ReadAllBytes(dllPath), File.ReadAllBytes(dllPath + ".dlsss"));
     }
 
     /// <summary>
-    /// And it is not reported as missing one either, on any surface.
+    /// And a DLSS NR dll with no saved original is reported as missing one, like any other.
     /// </summary>
     /// <remarks>
     /// Every count of backup coverage in the app - the row sentence, the games list, the "Missing a
-    /// saved original" tab, the sidebar - goes through <c>Game.HasSavedOriginal</c>. Answering
-    /// false here would put a warning on five games asking the user to fix something that cannot be
-    /// fixed and is not broken.
+    /// saved original" tab, the sidebar - goes through <c>Game.HasSavedOriginal</c>. While NR was
+    /// exempt, a game shipping it read as fully protected with nothing saved.
     /// </remarks>
     [Fact]
-    public async Task ADllNoGameShipsIsNotCountedAsMissingAnOriginal()
+    public async Task DlssNrWithoutAnOriginalIsCountedAsMissingOne()
     {
         await using var database = await TemporaryDatabase.CreateAsync();
         using var manifest = new ManifestScope();
 
-        var notShipped = database.WriteFakeDll("nvngx_dlssnr.dll");
-        var game = new TestGame("backup_not_shipped_2");
-        game.GameAssets.Add(Asset(game.ID, GameAssetType.DLSS_NR, notShipped));
-
-        Assert.False(GameFilters.IsMissingABackup(game));
-
-        // A released dll in the same game still answers for itself, so this is an exemption for one
-        // type rather than a hole in the coverage rule.
-        var shipped = database.WriteFakeDll("nvngx_dlss.dll");
-        game.GameAssets.Add(Asset(game.ID, GameAssetType.DLSS, shipped));
+        var dllPath = database.WriteFakeDll("nvngx_dlssnr.dll");
+        var game = new TestGame("backup_nr_2");
+        game.GameAssets.Add(Asset(game.ID, GameAssetType.DLSS_NR, dllPath));
 
         Assert.True(GameFilters.IsMissingABackup(game));
     }
