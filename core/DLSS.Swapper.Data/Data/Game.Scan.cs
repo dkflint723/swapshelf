@@ -47,6 +47,16 @@ public abstract partial class Game
     const double FullRescanIntervalDays = 7;
 
     /// <summary>
+    /// How many games can be scanned for dlls and covers at once.
+    /// </summary>
+    /// <remarks>
+    /// From upstream (beeradmoore/dlss-swapper#933). Every library queues its games straight into
+    /// <see cref="ProcessGame"/>, so without a limit a large library fires off hundreds of concurrent
+    /// recursive directory walks, and the UI-thread updates that follow each one, all at launch.
+    /// </remarks>
+    static readonly SemaphoreSlim _processGameSemaphore = new SemaphoreSlim(4);
+
+    /// <summary>
     /// Detects DLSS and updates cover image.
     /// </summary>
     public void ProcessGame(bool autoSave = true)
@@ -80,6 +90,8 @@ public abstract partial class Game
 
         ThreadPool.QueueUserWorkItem(async (stateInfo) =>
         {
+            await _processGameSemaphore.WaitAsync().ConfigureAwait(false);
+
             // Declared out here so the catch can put it back. See the catch for why.
             var oldGameAssets = new List<GameAsset>();
 
@@ -410,6 +422,9 @@ public abstract partial class Game
             }
             finally
             {
+                // Released before the UI-thread hop, so a busy UI thread does not hold up the next scan.
+                _processGameSemaphore.Release();
+
                 // Now update all the data on the UI therad.
                 await UiThread.RunAsync(async () =>
                 {
